@@ -1064,7 +1064,7 @@ ${blocks}
       const zoomTimer = useRef(null)
 
       const applyZoom = useCallback((next) => {
-        const value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 100) / 100))
+        const value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 1000) / 1000))
         zoomRef.current = value
         setZoom(value)
         setZoomBadge(true)
@@ -1629,7 +1629,7 @@ ${blocks}
         const onWheel = (event) => {
           if (!event.ctrlKey && !event.metaKey) return
           event.preventDefault()
-          applyZoom(zoomRef.current * Math.exp(-event.deltaY * 0.0025))
+          applyZoom(zoomRef.current * Math.exp(-event.deltaY * 0.005))
         }
         element.addEventListener('wheel', onWheel, { passive: false })
         return () => element.removeEventListener('wheel', onWheel)
