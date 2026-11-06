@@ -377,9 +377,6 @@ body { color: #15181d; font-family: "Courier Prime", "Courier New", "Songti SC",
 .sheet.cover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; margin-bottom: 20px; min-height: 1056px; padding-bottom: 176px; text-align: center; }
 .cover h1 { margin: 0; font-size: 32px; font-weight: 600; letter-spacing: .02em; }
 .cover p { margin: 0; font-size: 16px; color: #3a3d42; }
-.head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 34px; padding-bottom: 10px; border-bottom: 1px solid #e4e4e7; }
-.head h1 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #6c7077; }
-.head p { margin: 0; font-size: 12px; color: #6c7077; white-space: nowrap; }
 .block { white-space: pre-wrap; overflow-wrap: break-word; font-size: 16px; line-height: 1.55; }
 .scene { margin: 26px 0 0; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .action { margin: 10px 0 0; }
@@ -406,7 +403,6 @@ body { color: #15181d; font-family: "Courier Prime", "Courier New", "Songti SC",
 <h1>${title}</h1>${author ? `<p>${author}</p>` : ''}
 </div>
 <div class="sheet">
-<div class="head"><h1>${title}</h1>${author ? `<p>${author}</p>` : ''}</div>
 ${blocks}
 </div>
 </body></html>`
