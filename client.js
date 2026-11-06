@@ -550,30 +550,39 @@ ${blocks}
     }
 
     async function compressBytes(bytes) {
-      try {
-        const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'))
-        return new Uint8Array(await new Response(stream).arrayBuffer())
-      } catch {
-        return null
-      }
+      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'))
+      return new Uint8Array(await new Response(stream).arrayBuffer())
+    }
+
+    function bytesOfDataUrl(url) {
+      const binary = atob(String(url).slice(String(url).indexOf(',') + 1))
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+      return bytes
     }
 
     async function rasterPage(page) {
       const canvas = paintPage(page)
-      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
-      // Paper is white and ink is black, so one grey channel is enough — and it
-      // keeps a hundred-page script small once deflate gets hold of it.
-      const grey = new Uint8Array(canvas.width * canvas.height)
-      for (let i = 0, j = 0; j < grey.length; i += 4, j += 1) {
-        grey[j] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0
+      const base = { width: canvas.width, height: canvas.height }
+
+      if (typeof CompressionStream !== 'undefined') {
+        const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+        // Paper is white and ink is black, so one grey channel is enough — and
+        // it keeps a hundred-page script small once deflate gets hold of it.
+        const grey = new Uint8Array(canvas.width * canvas.height)
+        for (let i = 0, j = 0; j < grey.length; i += 4, j += 1) {
+          grey[j] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0
+        }
+        try {
+          return { ...base, data: await compressBytes(grey), filter: 'FlateDecode', colorSpace: 'DeviceGray' }
+        } catch {
+          // Fall through to JPEG below.
+        }
       }
-      const compressed = await compressBytes(grey)
-      return {
-        width: canvas.width,
-        height: canvas.height,
-        data: compressed || grey,
-        filter: compressed ? 'FlateDecode' : null,
-      }
+
+      // No CompressionStream (or it failed): JPEG pages keep the file sane.
+      const bytes = bytesOfDataUrl(canvas.toDataURL('image/jpeg', 0.92))
+      return { ...base, data: bytes, filter: 'DCTDecode', colorSpace: 'DeviceRGB' }
     }
 
     function buildPdf(images) {
@@ -611,7 +620,7 @@ ${blocks}
         const filter = image.filter ? ` /Filter /${image.filter}` : ''
         push(
           `${imageId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} ` +
-            `/ColorSpace /DeviceGray /BitsPerComponent 8${filter} /Length ${image.data.length} >>\nstream\n`,
+            `/ColorSpace /${image.colorSpace || 'DeviceGray'} /BitsPerComponent 8${filter} /Length ${image.data.length} >>\nstream\n`,
         )
         push(image.data)
         push('\nendstream\nendobj\n')
