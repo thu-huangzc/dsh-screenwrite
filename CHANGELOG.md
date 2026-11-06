@@ -6,11 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-06
+
 ### Added
 
 - Page zoom: pinch on a trackpad, or `⌘=` / `⌘-` (`Ctrl` on Windows and Linux),
   scales the sheet as a whole — type, margins and all. `⌘0` goes back to 100%.
   The level is remembered between sessions.
+
+### Fixed
+
+- Pinch zoom stepped in coarse jumps: sub-percent changes were rounded away, so a
+  slow gesture barely moved the page. Steps are now continuous, and the gesture
+  itself is twice as sensitive.
 
 ## [1.3.0] - 2026-11-06
 
