@@ -59,13 +59,6 @@ Scene headings may be English or Chinese. Prefix a line with `.` for scene, `@` 
 
 The plugin registers the `screenplay` tool — `list`, `read`, `create`, `write`, `append`, `rename`, `delete`. Ask the agent to read the live script first and to describe edits scene by scene.
 
-## Docs
-
-- [Where to read scripts](docs/PUBLIC_SCREENPLAYS.md) — screenplay sources, awards seasons, and public-domain material (中文).
-- [Public screenplay sources, English edition](docs/PUBLIC_SCREENPLAYS.en.md).
-- [Chinese README](docs/README.zh.md).
-- [Changelog](CHANGELOG.md).
-
 ## License
 
 MIT
