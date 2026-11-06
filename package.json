@@ -1,6 +1,6 @@
 {
   "name": "dsh-screenplay",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "description": "Professional five-element screenplay studio for DSH: writing-draft editing, Fountain interchange, print-ready pages, and agent co-writing.",

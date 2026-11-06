@@ -1,5 +1,7 @@
 # Screenwriting Tool · DSH plugin
 
+English | [中文](docs/README.zh.md)
+
 A screenwriting desk for DeepSeek Harness: a local screenplay library, a US Letter page, autosave, and an agent writing into the same script.
 
 Look for **Screenplay studio** in the sidebar.
@@ -21,7 +23,7 @@ Register the folder in `~/.dsh/profiles/<profile>/package.json`:
 }
 ```
 
-Restart Harness. The folder name, the package `name`, `cordis.patch.yml`'s `name` and the `id` at the top of `client.js` must all read `dsh-screenplay`, or the plugin never loads.
+Restart Harness. What has to agree is the package `name`, `cordis.patch.yml`'s `name`, the `id` at the top of `client.js` and the name in `dsh.profile.bundles` — all `dsh-screenplay`. The folder may be called anything.
 
 ## Writing
 
@@ -59,7 +61,10 @@ The plugin registers the `screenplay` tool — `list`, `read`, `create`, `write`
 
 ## Docs
 
-- [Where to read scripts](docs/PUBLIC_SCREENPLAYS.md) — screenplay sources, awards seasons, and public-domain material.
+- [Where to read scripts](docs/PUBLIC_SCREENPLAYS.md) — screenplay sources, awards seasons, and public-domain material (中文).
+- [Public screenplay sources, English edition](docs/PUBLIC_SCREENPLAYS.en.md).
+- [Chinese README](docs/README.zh.md).
+- [Changelog](CHANGELOG.md).
 
 ## License
 
