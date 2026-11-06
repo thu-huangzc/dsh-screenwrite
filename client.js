@@ -929,6 +929,9 @@ ${blocks}
         }
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault()
+          // Holding Enter must not machine-gun new blocks; the focus moves to the
+          // fresh block, so the repeat would split that one too.
+          if (event.repeat) return
           const element = event.currentTarget
           const start = element.selectionStart
           const end = element.selectionEnd
@@ -1090,6 +1093,7 @@ ${blocks}
       const toastTimer = useRef(null)
       const inputRefs = useRef(new Map())
       const focusReq = useRef(null)
+      const lastSplit = useRef(null)
       const saveFnRef = useRef(null)
       const mountedRef = useRef(true)
       const pageWrapRef = useRef(null)
@@ -1419,6 +1423,11 @@ ${blocks}
         (id, before, after) => {
           const current = docRef.current
           if (!current) return
+          // One physical Enter can reach this twice (an IME commit dispatches a
+          // second keydown). Only the first split of a block within the gesture
+          // counts.
+          const last = lastSplit.current
+          if (last && last.id === id && Date.now() - last.at < 200) return
           const index = current.blocks.findIndex((block) => block.id === id)
           if (index < 0) return
           const block = current.blocks[index]
@@ -1427,6 +1436,7 @@ ${blocks}
             type: after.trim() ? block.type : NEXT_TYPE[block.type] || 'action',
             text: after,
           }
+          lastSplit.current = { id, at: Date.now() }
           const blocks = current.blocks.slice()
           blocks[index] = { ...block, text: before }
           blocks.splice(index + 1, 0, created)
