@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Page zoom: pinch on a trackpad, or `⌘=` / `⌘-` (`Ctrl` on Windows and Linux),
+  scales the sheet as a whole — type, margins and all. `⌘0` goes back to 100%.
+  The level is remembered between sessions.
+
 ## [1.3.0] - 2026-11-06
 
 ### Added

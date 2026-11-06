@@ -55,6 +55,24 @@ window.__ModuleLoader__.load({
       return TYPE_SHORTCUT[code] || null
     }
 
+    // The page zooms like a document, not like a web app: pinch on the trackpad
+    // or ⌘+ / ⌘-, and the sheet (type and margins together) scales.
+    const ZOOM_MIN = 0.5
+    const ZOOM_MAX = 2
+    const ZOOM_STORE = 'screenplay.zoom'
+
+    function storedZoom() {
+      try {
+        const value = Number(localStorage.getItem(ZOOM_STORE))
+        if (Number.isFinite(value) && value > 0) {
+          return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value))
+        }
+      } catch {
+        // Storage can be unavailable; the page simply opens at 100%.
+      }
+      return 1
+    }
+
     const DICT = {
       zh: {
         nav: '剧本',
@@ -1040,6 +1058,19 @@ ${blocks}
       // Shortcut hint drawn directly above a format button on hover/focus. It is
       // fixed-positioned so the toolbar's scroll container cannot clip it.
       const [typeTip, setTypeTip] = useState(null)
+      const [zoom, setZoom] = useState(storedZoom)
+      const [zoomBadge, setZoomBadge] = useState(false)
+      const zoomRef = useRef(zoom)
+      const zoomTimer = useRef(null)
+
+      const applyZoom = useCallback((next) => {
+        const value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 100) / 100))
+        zoomRef.current = value
+        setZoom(value)
+        setZoomBadge(true)
+        clearTimeout(zoomTimer.current)
+        zoomTimer.current = setTimeout(() => setZoomBadge(false), 1100)
+      }, [])
 
       const showTypeTip = (event, index) => {
         const rect = event.currentTarget.getBoundingClientRect()
@@ -1081,6 +1112,7 @@ ${blocks}
           mountedRef.current = false
           clearTimeout(timerRef.current)
           clearTimeout(toastTimer.current)
+          clearTimeout(zoomTimer.current)
         }
       }, [])
 
@@ -1554,6 +1586,23 @@ ${blocks}
             saveDocument()
             return
           }
+          if ((event.metaKey || event.ctrlKey) && !event.altKey) {
+            if (event.key === '=' || event.key === '+') {
+              event.preventDefault()
+              applyZoom(zoomRef.current * 1.1)
+              return
+            }
+            if (event.key === '-' || event.key === '_') {
+              event.preventDefault()
+              applyZoom(zoomRef.current / 1.1)
+              return
+            }
+            if (event.key === '0') {
+              event.preventDefault()
+              applyZoom(1)
+              return
+            }
+          }
           const type = shortcutType(event)
           if (!type) return
           // Title/author fields keep their own typing.
@@ -1570,7 +1619,32 @@ ${blocks}
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-      }, [doc && doc.id, saveDocument, editingId, selectedId, changeType])
+      }, [doc && doc.id, saveDocument, editingId, selectedId, changeType, applyZoom])
+
+      // Trackpad pinch arrives as a wheel with ctrlKey set. Listening natively
+      // keeps the handler non-passive so the gesture does not also zoom the app.
+      useEffect(() => {
+        const element = pageWrapRef.current
+        if (!element) return undefined
+        const onWheel = (event) => {
+          if (!event.ctrlKey && !event.metaKey) return
+          event.preventDefault()
+          applyZoom(zoomRef.current * Math.exp(-event.deltaY * 0.0025))
+        }
+        element.addEventListener('wheel', onWheel, { passive: false })
+        return () => element.removeEventListener('wheel', onWheel)
+      }, [doc && doc.id, applyZoom])
+
+      useEffect(() => {
+        const timer = setTimeout(() => {
+          try {
+            localStorage.setItem(ZOOM_STORE, String(zoom))
+          } catch {
+            // Persisting the zoom level is a nicety.
+          }
+        }, 250)
+        return () => clearTimeout(timer)
+      }, [zoom])
 
       useEffect(() => {
         if (!confirmId) return undefined
@@ -2150,7 +2224,7 @@ ${blocks}
           ),
           h(
             'div',
-            { className: 'sw-paper' },
+            { className: 'sw-paper', style: { zoom: `${zoom}` } },
             h(
               'div',
               { className: 'sw-page-head' },
@@ -2186,6 +2260,9 @@ ${blocks}
                       }),
                 ),
           ),
+          zoomBadge
+            ? h('div', { className: 'sw-zoom', role: 'status', 'aria-live': 'polite' }, `${Math.round(zoom * 100)}%`)
+            : null,
         ),
       )
 
@@ -2308,6 +2385,8 @@ ${blocks}
 .sw-block--parenthetical .sw-input,.sw-block--parenthetical .sw-view{text-align:center;color:var(--dsw-alias-label-secondary);font-size:.92em}
 .sw-block--dialogue{width:66%;margin:2px auto 12px}
 .sw-block--dialogue .sw-input,.sw-block--dialogue .sw-view{text-align:left}
+.sw-zoom{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:30;padding:5px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;box-shadow:0 12px 26px -18px var(--dsw-alias-border-l2);pointer-events:none;animation:sw-zoom-in .16s ease}
+@keyframes sw-zoom-in{from{opacity:0;transform:translate(-50%,4px)}to{opacity:1;transform:translate(-50%,0)}}
 .sw-empty-page{display:block;width:100%;padding:40px 20px;border:1px dashed var(--dsw-alias-border-l2);border-radius:8px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}
 .sw-menu-wrap{position:relative}
 .sw-menu{position:absolute;right:0;top:36px;z-index:10;min-width:190px;padding:4px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-overlay);box-shadow:0 18px 40px -24px var(--dsw-alias-border-l2)}
