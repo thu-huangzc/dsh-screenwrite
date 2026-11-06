@@ -1,8 +1,8 @@
-# Screenplay studio · 剧本工坊
+# Screenplay studio
 
 A screenwriting desk for DeepSeek Harness: a local screenplay library, a US Letter page, autosave, and an agent writing into the same script.
 
-Look for **剧本工坊** in the sidebar.
+Look for **Screenplay studio** in the sidebar.
 
 ## Install
 
@@ -29,33 +29,37 @@ Restart Harness. The folder name, the package `name`, `cordis.patch.yml`'s `name
 - The scene rail follows the page as you scroll; click a scene to jump to it.
 - Exports: print/PDF, Fountain, plain text, standalone HTML.
 - Scripts are JSON files in `~/.dsh/screenplay/scripts/`; nothing leaves the machine.
-- The library ships with *A Real Pain* as a local format reference. It stays copyrighted and unpublished — see [PUBLIC_SCREENPLAYS.md](PUBLIC_SCREENPLAYS.md).
+- The library ships with *A Real Pain* as a local format reference. It stays copyrighted and unpublished — see [docs/PUBLIC_SCREENPLAYS.md](docs/PUBLIC_SCREENPLAYS.md).
 
 ## Format
 
-Fountain-like, Chinese or English scene headings:
+Fountain-like, one script per page, five elements:
 
 ```fountain
-Title: 夜航
-Author: 林夏
+Title: Night Flight
+Author: Lin Xia
 
-内景 咖啡馆 - 日
-清晨的光穿过百叶窗。
+INT. COFFEE - DAY
+Morning light through the blinds.
 
-林夏：
-（低声）
-他又迟到了。
+LIN XIA
+(low)
+He's late again.
 
 INT. OFFICE - NIGHT
 SARAH (V.O.)
 We should go.
 ```
 
-Prefix a line with `.` for scene, `@` for character, `!` for action.
+Scene headings may be English or Chinese. Prefix a line with `.` for scene, `@` for character, `!` for action.
 
 ## Agent
 
 The plugin registers the `screenplay` tool — `list`, `read`, `create`, `write`, `append`, `rename`, `delete`. Ask the agent to read the live script first and to describe edits scene by scene.
+
+## Docs
+
+- [Public screenplays](docs/PUBLIC_SCREENPLAYS.md) — where to read scripts, and the local *A Real Pain* reference copy.
 
 ## License
 

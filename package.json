@@ -18,7 +18,7 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
-    "PUBLIC_SCREENPLAYS.md"
+    "docs/*.md"
   ],
   "dsh": {
     "bundle": {
