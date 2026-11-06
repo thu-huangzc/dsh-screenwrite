@@ -68,12 +68,6 @@ PDF 按写作稿排版：标题页只有片名和署名，正文左 1.5 英寸�
 
 插件注册了 `screenplay` 工具：`list`、`read`、`create`、`write`、`append`、`rename`、`delete`。让 Agent 先读当前稿，再按场说明它改了什么——不要让它把整本剧本贴回聊天。
 
-## 文档
-
-- [公开剧本资源与案例](PUBLIC_SCREENPLAYS.md) — 剧本来源、颁奖季、可复用的开放剧本。
-- [Public screenplays (English)](PUBLIC_SCREENPLAYS.en.md)
-- [更新日志](../CHANGELOG.md)
-
 ## 许可
 
 MIT
