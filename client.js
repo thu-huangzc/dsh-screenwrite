@@ -74,6 +74,21 @@ window.__ModuleLoader__.load({
       return match ? match[1] : text
     }
 
+    const REPO_URL = 'https://github.com/thu-huangzc/dsh-screenwrite'
+    const LANG_STORE = 'screenplay.lang'
+    const UPDATE_STORE = 'screenplay.update'
+    const UPDATE_INTERVAL = 12 * 60 * 60 * 1000
+
+    function storedLang() {
+      try {
+        const value = localStorage.getItem(LANG_STORE)
+        if (value === 'zh' || value === 'en') return value
+      } catch {
+        // Storage can be unavailable; follow the app locale.
+      }
+      return 'auto'
+    }
+
     // The page zooms like a document, not like a web app: pinch on the trackpad
     // or ⌘+ / ⌘-, and the sheet (type and margins together) scales.
     const ZOOM_MIN = 0.5
@@ -142,6 +157,21 @@ window.__ModuleLoader__.load({
         exportHtml: '网页 (.html)',
         loadError: '剧本库加载失败',
         refresh: '刷新',
+        settings: '设置',
+        settingsLanguage: '语言',
+        settingsLangAuto: '跟随应用',
+        settingsUpdate: '版本更新',
+        settingsCheck: '检查更新',
+        settingsChecking: '正在检查…',
+        settingsLatest: '已是最新版本（{version}）',
+        settingsNewest: '发现新版本 {version}',
+        settingsUnreachable: '暂时连不上 GitHub，请稍后再试。',
+        settingsOpenRelease: '打开下载页',
+        settingsFeedback: '问题反馈',
+        settingsFeedbackHint: '遇到 bug，或者想要新功能？到 GitHub 开个 issue。',
+        settingsOpenIssues: '打开 GitHub Issues',
+        settingsVersion: '当前版本',
+        close: '关闭',
         retry: '重试',
         startWriting: '写下第一场',
         ph_scene: '内景 咖啡馆 - 日',
@@ -199,6 +229,21 @@ window.__ModuleLoader__.load({
         exportHtml: 'Web page (.html)',
         loadError: 'Could not load the library',
         refresh: 'Refresh',
+        settings: 'Settings',
+        settingsLanguage: 'Language',
+        settingsLangAuto: 'Follow app',
+        settingsUpdate: 'Updates',
+        settingsCheck: 'Check for updates',
+        settingsChecking: 'Checking…',
+        settingsLatest: 'Up to date ({version})',
+        settingsNewest: 'Version {version} is available',
+        settingsUnreachable: 'Could not reach GitHub. Try again later.',
+        settingsOpenRelease: 'Open the release page',
+        settingsFeedback: 'Feedback',
+        settingsFeedbackHint: 'Found a bug or want a feature? Open an issue on GitHub.',
+        settingsOpenIssues: 'Open GitHub Issues',
+        settingsVersion: 'Version',
+        close: 'Close',
         retry: 'Retry',
         startWriting: 'Write the first scene',
         ph_scene: 'INT. COFFEE SHOP - DAY',
@@ -779,6 +824,16 @@ ${blocks}
         )
       if (name === 'chevron') return h('svg', base, h('path', { d: 'M6 9l6 6 6-6' }))
       if (name === 'check') return h('svg', base, h('path', { d: 'M5 12.5l4.2 4.2L19 7' }))
+      if (name === 'gear')
+        return h(
+          'svg',
+          base,
+          h('circle', { cx: 12, cy: 12, r: 3.2 }),
+          h('path', {
+            d: 'M12 3.4v2.4M12 18.2v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M3.4 12h2.4M18.2 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7',
+          }),
+        )
+      if (name === 'close') return h('svg', base, h('path', { d: 'M6 6l12 12M18 6L6 18' }))
       if (name === 'refresh')
         return h('svg', base, h('path', { d: 'M19 12a7 7 0 1 1-2.1-5M19 4v5h-5' }))
       if (name === 'alert')
@@ -909,6 +964,117 @@ ${blocks}
               ),
             )
           : null,
+      )
+    }
+
+    function SettingsDialog({ t, langChoice, onLang, onClose, version, update, checking, onCheck }) {
+      useEffect(() => {
+        const onKey = (event) => {
+          if (event.key === 'Escape') onClose()
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+      }, [onClose])
+
+      let status = ''
+      let tone = ''
+      if (checking) {
+        status = t('settingsChecking')
+      } else if (update && update.error) {
+        status = t('settingsUnreachable')
+        tone = 'warn'
+      } else if (update && update.hasUpdate) {
+        status = t('settingsNewest').replace('{version}', update.latest || '')
+        tone = 'new'
+      } else if (update) {
+        status = t('settingsLatest').replace('{version}', update.current || version || '')
+        tone = 'ok'
+      }
+
+      const languages = [
+        ['auto', t('settingsLangAuto')],
+        ['zh', '中文'],
+        ['en', 'English'],
+      ]
+
+      return h(
+        'div',
+        {
+          className: 'sw-modal',
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget) onClose()
+          },
+        },
+        h(
+          'div',
+          { className: 'sw-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('settings') },
+          h(
+            'header',
+            { className: 'sw-sheet-head' },
+            h('h2', null, t('settings')),
+            h(
+              'button',
+              { type: 'button', className: 'sw-icon-btn', onClick: onClose, title: t('close'), 'aria-label': t('close') },
+              h(Glyph, { name: 'close', size: 15 }),
+            ),
+          ),
+          h(
+            'section',
+            { className: 'sw-sheet-row' },
+            h('div', { className: 'sw-sheet-label' }, t('settingsLanguage')),
+            h(
+              'div',
+              { className: 'sw-seg', role: 'group', 'aria-label': t('settingsLanguage') },
+              languages.map(([value, label]) =>
+                h(
+                  'button',
+                  {
+                    key: value,
+                    type: 'button',
+                    className: `sw-seg-item${langChoice === value ? ' sw-seg-item--on' : ''}`,
+                    'aria-pressed': langChoice === value,
+                    onClick: () => onLang(value),
+                  },
+                  label,
+                ),
+              ),
+            ),
+          ),
+          h(
+            'section',
+            { className: 'sw-sheet-row sw-sheet-row--stack' },
+            h('div', { className: 'sw-sheet-label' }, t('settingsUpdate')),
+            h(
+              'div',
+              { className: 'sw-sheet-line' },
+              h('span', { className: 'sw-muted' }, `${t('settingsVersion')} ${version || (update && update.current) || '—'}`),
+              h(
+                'button',
+                { type: 'button', className: 'sw-btn', onClick: onCheck, disabled: checking },
+                t('settingsCheck'),
+              ),
+            ),
+            status ? h('p', { className: `sw-sheet-note${tone ? ` sw-sheet-note--${tone}` : ''}` }, status) : null,
+            update && update.hasUpdate && update.url
+              ? h(
+                  'a',
+                  { className: 'sw-link', href: update.url, target: '_blank', rel: 'noreferrer noopener' },
+                  t('settingsOpenRelease'),
+                )
+              : null,
+          ),
+          h(
+            'section',
+            { className: 'sw-sheet-row sw-sheet-row--stack' },
+            h('div', { className: 'sw-sheet-label' }, t('settingsFeedback')),
+            h('p', { className: 'sw-muted' }, t('settingsFeedbackHint')),
+            h(
+              'a',
+              { className: 'sw-link', href: `${REPO_URL}/issues/`, target: '_blank', rel: 'noreferrer noopener' },
+              t('settingsOpenIssues'),
+            ),
+          ),
+        ),
       )
     }
 
@@ -1044,13 +1210,16 @@ ${blocks}
         }
       }, [ctx])
 
+      const [langChoice, setLangChoice] = useState(storedLang)
+
       const lang = useMemo(() => {
+        if (langChoice === 'zh' || langChoice === 'en') return langChoice
         try {
           return /^en/i.test(String(ctx.locale.getLocale().active || '')) ? 'en' : 'zh'
         } catch {
           return 'zh'
         }
-      }, [ctx, localeTick])
+      }, [ctx, localeTick, langChoice])
 
       const t = useCallback(
         (key) => {
@@ -1081,6 +1250,10 @@ ${blocks}
       // fixed-positioned so the toolbar's scroll container cannot clip it.
       const [typeTip, setTypeTip] = useState(null)
       const [zoom, setZoom] = useState(storedZoom)
+      const [settingsOpen, setSettingsOpen] = useState(false)
+      const [version, setVersion] = useState('')
+      const [update, setUpdate] = useState(null)
+      const [checking, setChecking] = useState(false)
       const [zoomBadge, setZoomBadge] = useState(false)
       const zoomRef = useRef(zoom)
       const zoomTimer = useRef(null)
@@ -1138,6 +1311,58 @@ ${blocks}
           clearTimeout(zoomTimer.current)
         }
       }, [])
+
+      const chooseLang = useCallback((choice) => {
+        setLangChoice(choice)
+        try {
+          localStorage.setItem(LANG_STORE, choice)
+        } catch {
+          // A language preference is a nicety, not a requirement.
+        }
+      }, [])
+
+      const runUpdateCheck = useCallback(async () => {
+        setChecking(true)
+        try {
+          const data = await request('/update')
+          setUpdate(data)
+          try {
+            localStorage.setItem(UPDATE_STORE, JSON.stringify(data))
+          } catch {
+            // Ignore storage failures.
+          }
+        } catch {
+          setUpdate({ error: 'unreachable', checkedAt: new Date().toISOString() })
+        } finally {
+          setChecking(false)
+        }
+      }, [])
+
+      useEffect(() => {
+        let alive = true
+        request('/version')
+          .then((data) => {
+            if (alive && data && data.version) setVersion(String(data.version))
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [])
+
+      useEffect(() => {
+        let cached = null
+        try {
+          cached = JSON.parse(localStorage.getItem(UPDATE_STORE) || 'null')
+        } catch {
+          cached = null
+        }
+        if (cached && cached.checkedAt && Date.now() - Date.parse(cached.checkedAt) < UPDATE_INTERVAL) {
+          setUpdate(cached)
+          return
+        }
+        runUpdateCheck()
+      }, [runUpdateCheck])
 
       const showToast = useCallback((message) => {
         setToast(message)
@@ -1864,6 +2089,32 @@ ${blocks}
 
       // The library has no top bar: it opens straight into 剧本库. The bar only
       // exists in the editor, where it carries the back button, doc meta and export.
+      const settingsButton = h(
+        'button',
+        {
+          type: 'button',
+          className: 'sw-icon-btn sw-gear',
+          onClick: () => setSettingsOpen(true),
+          title: t('settings'),
+          'aria-label': t('settings'),
+        },
+        h(Glyph, { name: 'gear' }),
+        update && update.hasUpdate ? h('span', { className: 'sw-gear-dot', 'aria-hidden': 'true' }) : null,
+      )
+
+      const settingsDialog = settingsOpen
+        ? h(SettingsDialog, {
+            t,
+            langChoice,
+            onLang: chooseLang,
+            onClose: () => setSettingsOpen(false),
+            version,
+            update,
+            checking,
+            onCheck: runUpdateCheck,
+          })
+        : null
+
       const header = doc
         ? h(
             'header',
@@ -1915,6 +2166,7 @@ ${blocks}
                 h('span', { className: 'sw-dot' }),
                 statusText,
               ),
+              settingsButton,
               h(ExportMenu, {
                 t,
                 doc,
@@ -2027,6 +2279,7 @@ ${blocks}
                   },
                   h(Glyph, { name: 'refresh' }),
                 ),
+                settingsButton,
                 creating
                   ? null
                   : h(
@@ -2163,6 +2416,7 @@ ${blocks}
           { className: 'sw-root' },
           h('style', null, CSS),
           header,
+          settingsDialog,
           library,
           toast ? h('div', { className: 'sw-toast', role: 'status' }, toast) : null,
         )
@@ -2327,6 +2581,7 @@ ${blocks}
         header,
         conflictBanner,
         editor,
+        settingsDialog,
         toast ? h('div', { className: 'sw-toast', role: 'status' }, toast) : null,
       )
     }
@@ -2450,6 +2705,27 @@ ${blocks}
 .sw-conflict strong{display:block;font-size:12.5px;font-weight:600}
 .sw-conflict span{display:block;font-size:11.5px;color:var(--dsw-alias-label-secondary);margin-top:2px;line-height:1.45}
 .sw-conflict-actions{display:flex;gap:8px;flex:none}
+.sw-modal{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.42)}
+.sw-sheet{width:min(420px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:18px;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;box-shadow:0 30px 70px -32px rgba(0,0,0,.6)}
+.sw-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sw-sheet-head h2{margin:0;font-size:14px;font-weight:650}
+.sw-sheet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1)}
+.sw-sheet-row--stack{display:block}
+.sw-sheet-label{font-size:12.5px;font-weight:600}
+.sw-sheet-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.sw-muted{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:6px 0 0}
+.sw-seg{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
+.sw-seg-item{border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.sw-seg-item:hover{color:var(--dsw-alias-label-primary)}
+.sw-seg-item--on{background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary)}
+.sw-sheet-note{font-size:11.5px;line-height:1.5;margin:8px 0 0;color:var(--dsw-alias-label-secondary)}
+.sw-sheet-note--ok{color:var(--dsw-alias-state-success-primary)}
+.sw-sheet-note--new{color:var(--dsw-alias-brand-primary)}
+.sw-sheet-note--warn{color:var(--dsw-alias-state-warn-primary)}
+.sw-link{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--dsw-alias-brand-primary);text-decoration:none}
+.sw-link:hover{text-decoration:underline}
+.sw-gear{position:relative}
+.sw-gear-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-brand-primary);box-shadow:0 0 0 2px var(--dsw-alias-bg-base)}
 .sw-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:20;padding:9px 14px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);font-size:12.5px;box-shadow:0 10px 30px -16px var(--dsw-alias-border-l2);max-width:min(560px,calc(100vw - 32px))}
 .sw-center{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--dsw-alias-label-secondary);font-size:13px;padding:40px}
 .sw-error-title{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}

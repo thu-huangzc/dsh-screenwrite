@@ -8,6 +8,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- A settings panel behind a gear button next to the library's refresh control (and
+  in the script header): interface language (follow the app, 中文, English), the
+  current version, a check against GitHub releases that also runs quietly every
+  twelve hours (a dot on the gear marks an update), and a link to the issue
+  tracker.
+- Host endpoints `GET /screenplay-api/version` and `GET /screenplay-api/update`
+  back the settings panel; the update lookup is cached for ten minutes.
 - A parenthetical arrives with its brackets: switching a line to 括号 wraps it in
   `（）` (Chinese) or `()` (English) and puts the caret inside. Leaving the element
   strips them again, and Enter closes the cue before opening the dialogue.

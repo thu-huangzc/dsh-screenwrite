@@ -33,8 +33,62 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{3,63}$/
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
+const REPO = 'thu-huangzc/dsh-screenwrite'
+const UPDATE_TTL = 10 * 60 * 1000
+
 let writeQueue = Promise.resolve()
 let seedPromise = null
+let versionPromise = null
+let updateCache = { at: 0, value: null }
+
+/** The plugin's own version, straight from package.json. */
+function packageVersion() {
+  if (!versionPromise) {
+    versionPromise = readFile(new URL('./package.json', import.meta.url), 'utf8')
+      .then((raw) => JSON.parse(raw).version || '0.0.0')
+      .catch(() => '0.0.0')
+  }
+  return versionPromise
+}
+
+function compareVersions(a, b) {
+  const left = String(a || '').split('.').map((part) => Number.parseInt(part, 10) || 0)
+  const right = String(b || '').split('.').map((part) => Number.parseInt(part, 10) || 0)
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const diff = (left[index] || 0) - (right[index] || 0)
+    if (diff) return diff
+  }
+  return 0
+}
+
+/** Ask GitHub for the newest release; cached so the panel can poll cheaply. */
+async function checkForUpdate() {
+  const now = Date.now()
+  if (updateCache.value && now - updateCache.at < UPDATE_TTL) return updateCache.value
+  const current = await packageVersion()
+  let value
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-screenplay' },
+      signal: AbortSignal.timeout(6000),
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    const latest = String(data.tag_name || '').replace(/^v/, '')
+    value = {
+      current,
+      latest: latest || current,
+      url: data.html_url || `https://github.com/${REPO}/releases`,
+      publishedAt: data.published_at || null,
+      hasUpdate: compareVersions(latest, current) > 0,
+      checkedAt: new Date().toISOString(),
+    }
+  } catch {
+    value = { current, latest: null, hasUpdate: false, error: 'unreachable', checkedAt: new Date().toISOString() }
+  }
+  updateCache = { at: now, value }
+  return value
+}
 
 /** Serialize mutations so two saves cannot interleave on one document. */
 function serialized(operation) {
@@ -273,6 +327,16 @@ async function routeApi(request, response) {
     const path = url.pathname.startsWith(API_PREFIX)
       ? url.pathname.slice(API_PREFIX.length)
       : ''
+
+    if (path === '/version' && request.method === 'GET') {
+      sendJson(response, 200, { version: await packageVersion(), repo: REPO })
+      return
+    }
+
+    if (path === '/update' && request.method === 'GET') {
+      sendJson(response, 200, await checkForUpdate())
+      return
+    }
 
     if (path === '/scripts' || path === '/scripts/') {
       if (request.method === 'GET') {
