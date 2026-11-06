@@ -96,11 +96,13 @@ window.__ModuleLoader__.load({
         noScenes: '还没有场景',
         untitledScene: '未命名场景',
         export: '导出',
-        exportPdf: '打印 / 存为 PDF',
+        exportPdf: '存为 PDF（.pdf）',
+        exporting: '正在生成 PDF…',
+        pdfSaved: 'PDF 已保存',
+        pdfError: 'PDF 生成失败',
         exportFountain: 'Fountain (.fountain)',
         exportTxt: '纯文本 (.txt)',
         exportHtml: '网页 (.html)',
-        popupBlocked: '浏览器拦截了打印窗口，请允许弹窗后重试。',
         loadError: '剧本库加载失败',
         refresh: '刷新',
         retry: '重试',
@@ -151,11 +153,13 @@ window.__ModuleLoader__.load({
         noScenes: 'No scenes yet',
         untitledScene: 'Untitled scene',
         export: 'Export',
-        exportPdf: 'Print / Save as PDF',
+        exportPdf: 'Save as PDF (.pdf)',
+        exporting: 'Rendering PDF…',
+        pdfSaved: 'PDF saved',
+        pdfError: 'Could not render the PDF',
         exportFountain: 'Fountain (.fountain)',
         exportTxt: 'Plain text (.txt)',
         exportHtml: 'Web page (.html)',
-        popupBlocked: 'The browser blocked the print window. Allow pop-ups and retry.',
         loadError: 'Could not load the library',
         refresh: 'Refresh',
         retry: 'Retry',
@@ -380,8 +384,8 @@ ${blocks}
 </body></html>`
     }
 
-    function download(name, text, type) {
-      const blob = new Blob([text], { type })
+    function download(name, payload, type) {
+      const blob = payload instanceof Blob ? payload : new Blob([payload], { type })
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
@@ -391,25 +395,249 @@ ${blocks}
       setTimeout(() => URL.revokeObjectURL(url), 2000)
     }
 
-    function printDocument(doc) {
-      const win = window.open('', '_blank')
-      if (!win) return false
-      try {
-        win.document.open()
-        win.document.write(toHtml(doc))
-        win.document.close()
-        win.focus()
-        setTimeout(() => {
-          try {
-            win.print()
-          } catch {
-            // The print dialog can be unavailable; the document stays open.
+    /* ---------------------------------------------------------- pdf export */
+    /* The page is laid out here in PDF points, painted with the same fonts the
+       studio uses, and written out as a Letter-size PDF. Everything stays in
+       the browser: no print dialog, no pop-up window, no server round trip. */
+
+    const PDF_PAGE = { width: 612, height: 792 }
+    const PDF_MARGIN = { top: 72, right: 72, bottom: 72, left: 108 }
+    const PDF_SCALE = 3 // 216 dpi
+    const PDF_FAMILY = '"Courier Prime","Courier New","Songti SC","Noto Serif SC","STSong",serif'
+
+    const PDF_STYLE = {
+      scene: { size: 12, weight: 700, before: 16, after: 7, width: 1, align: 'left', upper: true },
+      action: { size: 12, weight: 400, before: 6, after: 0, width: 1, align: 'left' },
+      character: { size: 12, weight: 600, before: 12, after: 0, width: 1, align: 'center' },
+      parenthetical: { size: 11, weight: 400, before: 1, after: 0, width: 0.56, align: 'center' },
+      dialogue: { size: 12, weight: 400, before: 1, after: 9, width: 0.66, align: 'left' },
+    }
+
+    /** Break a line into unbreakable pieces: Latin words, single wide glyphs. */
+    function chunkLine(text) {
+      const chunks = []
+      let word = ''
+      for (const char of String(text)) {
+        if (/\s/.test(char) || WIDE_CHAR.test(char)) {
+          if (word) {
+            chunks.push(word)
+            word = ''
           }
-        }, 350)
-        return true
-      } catch {
-        return false
+          chunks.push(char)
+        } else {
+          word += char
+        }
       }
+      if (word) chunks.push(word)
+      return chunks
+    }
+
+    function createMeasurer() {
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      const cache = new Map()
+      return (text, font) => {
+        const key = `${font}\u0000${text}`
+        let width = cache.get(key)
+        if (width === undefined) {
+          context.font = font
+          width = context.measureText(text).width
+          cache.set(key, width)
+        }
+        return width
+      }
+    }
+
+    function wrapLine(text, maxWidth, font, measure) {
+      const rows = []
+      for (const paragraph of String(text).split('\n')) {
+        if (!paragraph.trim()) {
+          rows.push('')
+          continue
+        }
+        let line = ''
+        for (const chunk of chunkLine(paragraph)) {
+          const candidate = line + chunk
+          if (line && measure(candidate, font) > maxWidth) {
+            rows.push(line.replace(/\s+$/, ''))
+            line = chunk === ' ' ? '' : chunk
+          } else {
+            line = candidate
+          }
+        }
+        if (line) rows.push(line.replace(/\s+$/, ''))
+      }
+      return rows
+    }
+
+    /** Lay the script out as a title page plus Letter-sized script pages. */
+    function layoutScreenplay(doc) {
+      const contentWidth = PDF_PAGE.width - PDF_MARGIN.left - PDF_MARGIN.right
+      const bottom = PDF_PAGE.height - PDF_MARGIN.bottom
+      const measure = createMeasurer()
+      const pages = [{ kind: 'title', title: doc.title || '', author: doc.author || '' }]
+      let lines = []
+      let y = PDF_MARGIN.top
+
+      const breakPage = () => {
+        pages.push({ kind: 'script', lines })
+        lines = []
+        y = PDF_MARGIN.top
+      }
+
+      for (const block of Array.isArray(doc.blocks) ? doc.blocks : []) {
+        const style = PDF_STYLE[block.type] || PDF_STYLE.action
+        const raw = String(block.text || '')
+        if (!raw.trim()) continue
+        const text = style.upper ? raw.toUpperCase() : raw
+        const maxWidth = contentWidth * style.width
+        const x = PDF_MARGIN.left + (contentWidth - maxWidth) / 2
+        const font = `${style.weight} ${style.size}px ${PDF_FAMILY}`
+        const lineHeight = style.size * 1.2
+        y += style.before
+        for (const row of wrapLine(text, maxWidth, font, measure)) {
+          if (y + lineHeight > bottom) breakPage()
+          lines.push({ text: row, x, y, width: maxWidth, size: style.size, weight: style.weight, align: style.align })
+          y += lineHeight
+        }
+        y += style.after
+      }
+
+      if (lines.length) breakPage()
+      let number = 0
+      for (const page of pages) {
+        if (page.kind !== 'script') continue
+        number += 1
+        page.number = number
+      }
+      return pages
+    }
+
+    function paintPage(page) {
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(PDF_PAGE.width * PDF_SCALE)
+      canvas.height = Math.round(PDF_PAGE.height * PDF_SCALE)
+      const context = canvas.getContext('2d')
+      context.scale(PDF_SCALE, PDF_SCALE)
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, PDF_PAGE.width, PDF_PAGE.height)
+      context.fillStyle = '#111111'
+      context.textBaseline = 'alphabetic'
+
+      if (page.kind === 'title') {
+        context.textAlign = 'center'
+        context.font = `600 24px ${PDF_FAMILY}`
+        context.fillText(page.title || '', PDF_PAGE.width / 2, 300)
+        if (page.author) {
+          context.font = `400 12px ${PDF_FAMILY}`
+          context.fillText(page.author, PDF_PAGE.width / 2, 340)
+        }
+        return canvas
+      }
+
+      for (const line of page.lines) {
+        context.font = `${line.weight} ${line.size}px ${PDF_FAMILY}`
+        context.textAlign = line.align === 'center' ? 'center' : 'left'
+        const x = line.align === 'center' ? line.x + line.width / 2 : line.x
+        context.fillText(line.text, x, line.y + line.size * 0.85)
+      }
+      if (page.number > 1) {
+        context.textAlign = 'right'
+        context.font = `400 11px ${PDF_FAMILY}`
+        context.fillText(`${page.number}.`, PDF_PAGE.width - PDF_MARGIN.right, PDF_MARGIN.top - 24)
+      }
+      return canvas
+    }
+
+    async function compressBytes(bytes) {
+      try {
+        const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate'))
+        return new Uint8Array(await new Response(stream).arrayBuffer())
+      } catch {
+        return null
+      }
+    }
+
+    async function rasterPage(page) {
+      const canvas = paintPage(page)
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+      // Paper is white and ink is black, so one grey channel is enough — and it
+      // keeps a hundred-page script small once deflate gets hold of it.
+      const grey = new Uint8Array(canvas.width * canvas.height)
+      for (let i = 0, j = 0; j < grey.length; i += 4, j += 1) {
+        grey[j] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0
+      }
+      const compressed = await compressBytes(grey)
+      return {
+        width: canvas.width,
+        height: canvas.height,
+        data: compressed || grey,
+        filter: compressed ? 'FlateDecode' : null,
+      }
+    }
+
+    function buildPdf(images) {
+      const encoder = new TextEncoder()
+      const parts = []
+      let size = 0
+      const push = (value) => {
+        const bytes = typeof value === 'string' ? encoder.encode(value) : value
+        parts.push(bytes)
+        size += bytes.length
+      }
+      const offsets = []
+      const total = 2 + images.length * 3
+
+      push('%PDF-1.4\n')
+      offsets[1] = size
+      push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n')
+
+      const kids = images.map((_, index) => `${3 + index * 3} 0 R`).join(' ')
+      offsets[2] = size
+      push(`2 0 obj\n<< /Type /Pages /Kids [${kids}] /Count ${images.length} >>\nendobj\n`)
+
+      images.forEach((image, index) => {
+        const pageId = 3 + index * 3
+        const imageId = pageId + 1
+        const contentId = pageId + 2
+
+        offsets[pageId] = size
+        push(
+          `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE.width} ${PDF_PAGE.height}] ` +
+            `/Resources << /XObject << /Im0 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`,
+        )
+
+        offsets[imageId] = size
+        const filter = image.filter ? ` /Filter /${image.filter}` : ''
+        push(
+          `${imageId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} ` +
+            `/ColorSpace /DeviceGray /BitsPerComponent 8${filter} /Length ${image.data.length} >>\nstream\n`,
+        )
+        push(image.data)
+        push('\nendstream\nendobj\n')
+
+        const content = `q\n${PDF_PAGE.width} 0 0 ${PDF_PAGE.height} 0 0 cm\n/Im0 Do\nQ\n`
+        offsets[contentId] = size
+        push(`${contentId} 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`)
+      })
+
+      const xref = size
+      push(`xref\n0 ${total + 1}\n0000000000 65535 f \n`)
+      for (let id = 1; id <= total; id += 1) {
+        push(`${String(offsets[id]).padStart(10, '0')} 00000 n \n`)
+      }
+      push(`trailer\n<< /Size ${total + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`)
+
+      return new Blob(parts, { type: 'application/pdf' })
+    }
+
+    async function exportPdf(doc) {
+      const pages = layoutScreenplay(doc)
+      const images = []
+      for (const page of pages) images.push(await rasterPage(page))
+      const blob = buildPdf(images)
+      download(`${slug(doc.title)}.pdf`, blob, 'application/pdf')
+      return pages.length
     }
 
     async function request(path, options) {
@@ -543,10 +771,16 @@ ${blocks}
       const items = [
         {
           key: 'pdf',
-          icon: 'print',
+          icon: 'download',
           label: t('exportPdf'),
-          action: () => {
-            if (!printDocument(doc)) onNotify(t('popupBlocked'))
+          action: async () => {
+            onNotify(t('exporting'))
+            try {
+              await exportPdf(doc)
+              onNotify(t('pdfSaved'))
+            } catch {
+              onNotify(t('pdfError'))
+            }
           },
         },
         {

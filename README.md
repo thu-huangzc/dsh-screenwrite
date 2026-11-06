@@ -27,7 +27,7 @@ Restart Harness. The folder name, the package `name`, `cordis.patch.yml`'s `name
 
 - Five elements: scene heading, action, character, parenthetical, dialogue. `⌥1`–`⌥5` (`Alt+1`–`Alt+5`) jumps straight to an element, `Tab` still cycles, `Enter` splits, `⌘S` saves.
 - The scene rail follows the page as you scroll; click a scene to jump to it.
-- Exports: print/PDF, Fountain, plain text, standalone HTML.
+- Exports: PDF (renders in the browser, no print dialog), Fountain, plain text, standalone HTML.
 - Scripts are JSON files in `~/.dsh/screenplay/scripts/`; nothing leaves the machine.
 - A first run into an empty library seeds a short demo, *Night Shift* (`samples/`), so the page has something on it.
 
