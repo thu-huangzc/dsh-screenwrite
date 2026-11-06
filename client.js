@@ -354,6 +354,8 @@ window.__ModuleLoader__.load({
       return `${out.join('\n').trimEnd()}\n`
     }
 
+    /** A standalone reading copy: one white sheet on a soft backdrop, with a
+     * print stylesheet that turns it back into a Letter-size script. */
     function toHtml(doc) {
       const title = escapeHtml(doc.title || 'Screenplay')
       const author = escapeHtml(doc.author || '')
@@ -365,22 +367,39 @@ window.__ModuleLoader__.load({
         })
         .join('\n')
       return `<!doctype html>
-<html><head><meta charset="utf-8"><title>${title}</title><style>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title><style>
+:root { color-scheme: light; }
+html, body { margin: 0; background: #e9e9ec; }
+body { color: #15181d; font-family: "Courier Prime", "Courier New", "Songti SC", "Noto Serif SC", "STSong", serif; }
+.sheet { width: min(816px, 100%); margin: 40px auto 64px; padding: 84px 96px 96px 144px; box-sizing: border-box; background: #fff; border-radius: 2px; box-shadow: 0 26px 60px -42px rgba(0, 0, 0, .5); }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 34px; padding-bottom: 10px; border-bottom: 1px solid #e4e4e7; }
+.head h1 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #6c7077; }
+.head p { margin: 0; font-size: 12px; color: #6c7077; white-space: nowrap; }
+.block { white-space: pre-wrap; overflow-wrap: break-word; font-size: 16px; line-height: 1.55; }
+.scene { margin: 26px 0 0; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.action { margin: 10px 0 0; }
+.character { margin: 20px 0 0; text-align: center; font-weight: 600; letter-spacing: .05em; }
+.parenthetical { width: 56%; margin: 2px auto 0; text-align: center; color: #565a61; font-size: .94em; }
+.dialogue { width: 66%; margin: 2px auto 12px; }
+.block:first-child { margin-top: 0; }
+@media (max-width: 760px) {
+  .sheet { margin: 0; padding: 36px 22px 48px; border-radius: 0; box-shadow: none; }
+  .dialogue { width: 82%; }
+}
 @page { size: Letter; margin: 1in 1in 1in 1.5in; }
-* { box-sizing: border-box; }
-body { margin: 0; color: #111; background: #fff; font-family: "Courier Prime", "Courier New", "Songti SC", "Noto Serif SC", "STSong", serif; font-size: 12pt; line-height: 1.2; }
-.title-page { min-height: 9in; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; page-break-after: always; }
-.title-page h1 { margin: 0 0 8mm; font-size: 24pt; font-weight: 600; letter-spacing: .02em; }
-.title-page p { margin: 0; font-size: 12pt; color: #333; }
-.block { white-space: pre-wrap; }
-.scene { margin: 16pt 0 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
-.action { margin: 6pt 0; }
-.character { margin: 12pt 0 0; text-align: center; font-weight: 600; letter-spacing: .04em; }
-.parenthetical { margin: 1pt 16% 0; text-align: center; color: #333; }
-.dialogue { margin: 1pt 16% 9pt; }
+@media print {
+  html, body { background: #fff; }
+  .sheet { width: auto; margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+  .scene, .character, .parenthetical { break-after: avoid; }
+  .character, .dialogue { break-inside: avoid; }
+}
 </style></head><body>
-<div class="title-page"><h1>${title}</h1>${author ? `<p>${author}</p>` : ''}</div>
+<div class="sheet">
+<div class="head"><h1>${title}</h1>${author ? `<p>${author}</p>` : ''}</div>
 ${blocks}
+</div>
 </body></html>`
     }
 
