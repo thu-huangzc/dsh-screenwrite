@@ -374,6 +374,9 @@ window.__ModuleLoader__.load({
 html, body { margin: 0; background: #e9e9ec; }
 body { color: #15181d; font-family: "Courier Prime", "Courier New", "Songti SC", "Noto Serif SC", "STSong", serif; }
 .sheet { width: min(816px, 100%); margin: 40px auto 64px; padding: 84px 96px 96px 144px; box-sizing: border-box; background: #fff; border-radius: 2px; box-shadow: 0 26px 60px -42px rgba(0, 0, 0, .5); }
+.sheet.cover { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; margin-bottom: 20px; min-height: 1056px; padding-bottom: 176px; text-align: center; }
+.cover h1 { margin: 0; font-size: 32px; font-weight: 600; letter-spacing: .02em; }
+.cover p { margin: 0; font-size: 16px; color: #3a3d42; }
 .head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 34px; padding-bottom: 10px; border-bottom: 1px solid #e4e4e7; }
 .head h1 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #6c7077; }
 .head p { margin: 0; font-size: 12px; color: #6c7077; white-space: nowrap; }
@@ -386,16 +389,22 @@ body { color: #15181d; font-family: "Courier Prime", "Courier New", "Songti SC",
 .block:first-child { margin-top: 0; }
 @media (max-width: 760px) {
   .sheet { margin: 0; padding: 36px 22px 48px; border-radius: 0; box-shadow: none; }
+  .sheet.cover { min-height: 72vh; padding-bottom: 0; }
+  .cover h1 { font-size: 26px; }
   .dialogue { width: 82%; }
 }
 @page { size: Letter; margin: 1in 1in 1in 1.5in; }
 @media print {
   html, body { background: #fff; }
   .sheet { width: auto; margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+  .sheet.cover { min-height: 0; height: 9in; padding: 3.1in 0 0; justify-content: flex-start; break-after: page; }
   .scene, .character, .parenthetical { break-after: avoid; }
   .character, .dialogue { break-inside: avoid; }
 }
 </style></head><body>
+<div class="sheet cover">
+<h1>${title}</h1>${author ? `<p>${author}</p>` : ''}
+</div>
 <div class="sheet">
 <div class="head"><h1>${title}</h1>${author ? `<p>${author}</p>` : ''}</div>
 ${blocks}
