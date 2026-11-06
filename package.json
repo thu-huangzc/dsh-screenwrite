@@ -1,0 +1,38 @@
+{
+  "name": "dsh-screenplay",
+  "version": "1.1.5",
+  "private": true,
+  "type": "module",
+  "description": "Professional five-element screenplay studio for DSH: writing-draft editing, Fountain interchange, print-ready pages, and agent co-writing.",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "screenplay.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "PUBLIC_SCREENPLAYS.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "author": "thu-huangzc (https://github.com/thu-huangzc)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thu-huangzc/dsh-screenwrite.git"
+  },
+  "homepage": "https://github.com/thu-huangzc/dsh-screenwrite#readme"
+}
