@@ -29,7 +29,7 @@ Restart Harness. The folder name, the package `name`, `cordis.patch.yml`'s `name
 - The scene rail follows the page as you scroll; click a scene to jump to it.
 - Exports: print/PDF, Fountain, plain text, standalone HTML.
 - Scripts are JSON files in `~/.dsh/screenplay/scripts/`; nothing leaves the machine.
-- The library ships with *A Real Pain* as a local format reference. It stays copyrighted and unpublished — see [docs/PUBLIC_SCREENPLAYS.md](docs/PUBLIC_SCREENPLAYS.md).
+- A first run into an empty library seeds a short demo, *Night Shift* (`samples/`), so the page has something on it.
 
 ## Format
 
@@ -59,7 +59,7 @@ The plugin registers the `screenplay` tool — `list`, `read`, `create`, `write`
 
 ## Docs
 
-- [Public screenplays](docs/PUBLIC_SCREENPLAYS.md) — where to read scripts, and the local *A Real Pain* reference copy.
+- [Where to read scripts](docs/PUBLIC_SCREENPLAYS.md) — screenplay sources, awards seasons, and public-domain material.
 
 ## License
 

@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   newBlockId,
@@ -26,11 +27,14 @@ export const inject = ['tools', 'webServer']
 const API_PREFIX = '/screenplay-api'
 const DATA_ROOT = join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'screenplay')
 const SCRIPT_DIR = join(DATA_ROOT, 'scripts')
+const SAMPLE_PATH = fileURLToPath(new URL('./samples/night-shift.fountain', import.meta.url))
+const SAMPLE_ID = 'sp-sample-night-shift'
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{3,63}$/
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
 let writeQueue = Promise.resolve()
+let seedPromise = null
 
 /** Serialize mutations so two saves cannot interleave on one document. */
 function serialized(operation) {
@@ -121,6 +125,39 @@ async function writeScript(doc) {
   await writeFile(temporary, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
   await rename(temporary, path)
   return payload
+}
+
+/**
+ * A brand-new install should open onto something, not an empty shelf. The demo
+ * script is seeded only while the library has no scripts at all, so an existing
+ * library (and any writer who deletes the demo) is left alone.
+ */
+async function seedSample() {
+  let text
+  try {
+    text = await readFile(SAMPLE_PATH, 'utf8')
+  } catch {
+    return
+  }
+  const parsed = parseScreenplay(text)
+  await serialized(async () => {
+    const entries = await readdir(SCRIPT_DIR).catch(() => [])
+    if (entries.some((entry) => entry.endsWith('.json'))) return
+    const stamp = nowIso()
+    await writeScript({
+      id: SAMPLE_ID,
+      title: parsed.meta.title || 'Night Shift',
+      author: parsed.meta.author || '',
+      createdAt: stamp,
+      updatedAt: stamp,
+      blocks: parsed.blocks.length > 0 ? parsed.blocks : cleanBlocks([]),
+    })
+  })
+}
+
+function ensureReady() {
+  if (!seedPromise) seedPromise = seedSample().catch(() => undefined)
+  return seedPromise
 }
 
 async function listScripts() {
@@ -223,6 +260,7 @@ async function readJsonBody(request) {
 
 async function routeApi(request, response) {
   try {
+    await ensureReady()
     if (request.headers['x-screenplay'] !== '1') {
       throw httpError(403, 'Missing screenplay API header')
     }
@@ -408,6 +446,7 @@ function readMessage(doc) {
 }
 
 async function runTool(args) {
+  await ensureReady()
   const action = args && args.action
   if (typeof action !== 'string') throw new Error('`action` is required')
 
