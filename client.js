@@ -27,6 +27,34 @@ window.__ModuleLoader__.load({
       return CYCLE[(index + direction + CYCLE.length) % CYCLE.length]
     }
 
+    // Each element also answers to its own Option/Alt + digit, so a writer can
+    // land on a form directly instead of tabbing through the cycle. Tab keeps
+    // cycling for the usual flow — the two live side by side.
+    const TYPE_SHORTCUT = {
+      Digit1: 'scene',
+      Digit2: 'action',
+      Digit3: 'character',
+      Digit4: 'parenthetical',
+      Digit5: 'dialogue',
+    }
+
+    const IS_MAC = (() => {
+      try {
+        return /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent || '')
+      } catch {
+        return false
+      }
+    })()
+    const MOD_LABEL = IS_MAC ? '⌥' : 'Alt+'
+
+    /** The element a key chord asks for, or null. Uses `code` so macOS's
+     * Option+digit characters (¡ ™ £ ¢ ∞) never matter. */
+    function shortcutType(event) {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null
+      const code = String(event.code || '').replace(/^Numpad/, 'Digit')
+      return TYPE_SHORTCUT[code] || null
+    }
+
     const DICT = {
       zh: {
         nav: '剧本',
@@ -63,7 +91,7 @@ window.__ModuleLoader__.load({
         character: '角色名',
         parenthetical: '括号',
         dialogue: '对白',
-        tabHint: 'Tab 切换要素 · Enter 下一段',
+        tabHint: 'Tab 循环要素 · {mod}1–5 直达 · Enter 下一段',
         addScene: '添加场景',
         noScenes: '还没有场景',
         untitledScene: '未命名场景',
@@ -118,7 +146,7 @@ window.__ModuleLoader__.load({
         character: 'Character name',
         parenthetical: 'Parenthetical',
         dialogue: 'Dialogue',
-        tabHint: 'Only what is seen and heard · Tab cycles element · Enter next block',
+        tabHint: 'Tab cycles · {mod}1–5 jumps to a form · Enter next block',
         addScene: 'Add scene',
         noScenes: 'No scenes yet',
         untitledScene: 'Untitled scene',
@@ -1245,11 +1273,25 @@ ${blocks}
           if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
             event.preventDefault()
             saveDocument()
+            return
           }
+          const type = shortcutType(event)
+          if (!type) return
+          // Title/author fields keep their own typing.
+          if (event.target && event.target.tagName === 'INPUT') return
+          const current = docRef.current
+          if (!current) return
+          const target =
+            editingId && current.blocks.some((block) => block.id === editingId) ? editingId : selectedId
+          if (!target) return
+          event.preventDefault()
+          const element = inputRefs.current.get(target)
+          const caret = element && element === document.activeElement ? element.selectionStart : undefined
+          changeType(target, type, caret)
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-      }, [doc && doc.id, saveDocument])
+      }, [doc && doc.id, saveDocument, editingId, selectedId, changeType])
 
       useEffect(() => {
         if (!confirmId) return undefined
@@ -1784,7 +1826,7 @@ ${blocks}
             h(
               'div',
               { className: 'sw-types', role: 'toolbar', 'aria-label': t('format') || 'Format' },
-              TYPES.map((type) =>
+              TYPES.map((type, index) =>
                 h(
                   'button',
                   {
@@ -1792,16 +1834,23 @@ ${blocks}
                     type: 'button',
                     className: `sw-type${selectedBlock && selectedBlock.type === type ? ' sw-type--on' : ''}`,
                     disabled: !selectedId,
+                    title: `${t(type)} · ${MOD_LABEL}${index + 1}`,
+                    'aria-keyshortcuts': `Alt+${index + 1}`,
                     onClick: () => {
                       const target = selectedId || (doc.blocks[0] && doc.blocks[0].id)
                       if (target) changeType(target, type)
                     },
                   },
                   t(type),
+                  h(
+                    'kbd',
+                    { className: 'sw-type-key', 'aria-hidden': 'true' },
+                    `${index + 1}`,
+                  ),
                 ),
               ),
             ),
-            h('span', { className: 'sw-hint' }, t('tabHint')),
+            h('span', { className: 'sw-hint' }, t('tabHint').replace('{mod}', MOD_LABEL)),
           ),
           h(
             'div',
@@ -1840,12 +1889,6 @@ ${blocks}
                         onEdit: beginEdit,
                       }),
                 ),
-            h(
-              'button',
-              { type: 'button', className: 'sw-paper-add', onClick: addScene },
-              h(Glyph, { name: 'plus', size: 14 }),
-              t('addScene'),
-            ),
           ),
         ),
       )
@@ -1941,10 +1984,12 @@ ${blocks}
 .sw-page-wrap{flex:1 1 auto;min-width:0;overflow-y:auto;padding:0 24px 100px;position:relative;box-sizing:border-box}
 .sw-toolbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:10px 0;background:var(--dsw-alias-bg-base);border-bottom:1px solid var(--dsw-alias-border-l1)}
 .sw-types{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow-x:auto}
-.sw-type{border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.sw-type{display:inline-flex;align-items:center;gap:5px;border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .sw-type:hover{color:var(--dsw-alias-label-primary)}
 .sw-type--on{background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary)}
 .sw-type:disabled{opacity:.45;cursor:default}
+.sw-type-key{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;opacity:.45;padding:2px 4px;border:1px solid currentColor;border-radius:4px;color:inherit}
+.sw-type:hover .sw-type-key,.sw-type--on .sw-type-key{opacity:.7}
 .sw-hint{margin-left:auto;font-size:10.5px;color:var(--dsw-alias-label-secondary);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw-paper{width:100%;max-width:816px;margin:24px auto 0;padding:96px 96px 96px 144px;box-sizing:border-box;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:3px;box-shadow:0 22px 50px -38px var(--dsw-alias-border-l2);min-height:1056px;font-family:var(--sw-paper-font);font-size:16px;line-height:1.5;color:var(--dsw-alias-label-primary)}
 .sw-page-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:34px;padding-bottom:10px;border-bottom:1px solid var(--dsw-alias-border-l1);opacity:.75}
@@ -1968,8 +2013,6 @@ ${blocks}
 .sw-block--dialogue{width:66%;margin:2px auto 12px}
 .sw-block--dialogue .sw-input,.sw-block--dialogue .sw-view{text-align:left}
 .sw-empty-page{display:block;width:100%;padding:40px 20px;border:1px dashed var(--dsw-alias-border-l2);border-radius:8px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}
-.sw-paper-add{display:flex;align-items:center;gap:6px;margin:44px auto 0;padding:8px 14px;border:1px dashed var(--dsw-alias-border-l2);border-radius:8px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
-.sw-paper-add:hover{color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary)}
 .sw-menu-wrap{position:relative}
 .sw-menu{position:absolute;right:0;top:36px;z-index:10;min-width:190px;padding:4px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-overlay);box-shadow:0 18px 40px -24px var(--dsw-alias-border-l2)}
 .sw-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;text-align:left;cursor:pointer;white-space:nowrap}
