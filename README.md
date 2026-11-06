@@ -1,4 +1,4 @@
-# Screenplay studio
+# Screenwriting Tool · DSH plugin
 
 A screenwriting desk for DeepSeek Harness: a local screenplay library, a US Letter page, autosave, and an agent writing into the same script.
 
