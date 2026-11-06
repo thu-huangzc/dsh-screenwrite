@@ -91,7 +91,7 @@ window.__ModuleLoader__.load({
         character: '角色名',
         parenthetical: '括号',
         dialogue: '对白',
-        tabHint: 'Tab 循环要素 · {mod}1–5 直达 · Enter 下一段',
+        tabHint: 'Tab 循环要素 · Enter 下一段',
         addScene: '添加场景',
         noScenes: '还没有场景',
         untitledScene: '未命名场景',
@@ -146,7 +146,7 @@ window.__ModuleLoader__.load({
         character: 'Character name',
         parenthetical: 'Parenthetical',
         dialogue: 'Dialogue',
-        tabHint: 'Tab cycles · {mod}1–5 jumps to a form · Enter next block',
+        tabHint: 'Tab cycles element · Enter next block',
         addScene: 'Add scene',
         noScenes: 'No scenes yet',
         untitledScene: 'Untitled scene',
@@ -770,6 +770,18 @@ ${blocks}
       const [focusTick, setFocusTick] = useState(0)
       // Scene number the paper is currently showing; 0 until the first measurement.
       const [viewScene, setViewScene] = useState(0)
+      // Shortcut hint drawn directly above a format button on hover/focus. It is
+      // fixed-positioned so the toolbar's scroll container cannot clip it.
+      const [typeTip, setTypeTip] = useState(null)
+
+      const showTypeTip = (event, index) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        const text = `${MOD_LABEL}${index + 1}`
+        const half = text.length * 4 + 12
+        const left = Math.min(Math.max(rect.left + rect.width / 2, half), window.innerWidth - half)
+        setTypeTip({ text, left, top: Math.max(rect.top - 7, 22) })
+      }
+      const hideTypeTip = () => setTypeTip(null)
 
       const docRef = useRef(null)
       const baseRef = useRef('')
@@ -1819,7 +1831,14 @@ ${blocks}
         ),
         h(
           'div',
-          { className: 'sw-page-wrap', ref: pageWrapRef, onScroll: onPaperScroll },
+          {
+            className: 'sw-page-wrap',
+            ref: pageWrapRef,
+            onScroll: (event) => {
+              if (typeTip) setTypeTip(null)
+              onPaperScroll(event)
+            },
+          },
           h(
             'div',
             { className: 'sw-toolbar' },
@@ -1834,23 +1853,33 @@ ${blocks}
                     type: 'button',
                     className: `sw-type${selectedBlock && selectedBlock.type === type ? ' sw-type--on' : ''}`,
                     disabled: !selectedId,
-                    title: `${t(type)} · ${MOD_LABEL}${index + 1}`,
                     'aria-keyshortcuts': `Alt+${index + 1}`,
+                    onMouseEnter: (event) => showTypeTip(event, index),
+                    onMouseLeave: hideTypeTip,
+                    onFocus: (event) => showTypeTip(event, index),
+                    onBlur: hideTypeTip,
                     onClick: () => {
+                      hideTypeTip()
                       const target = selectedId || (doc.blocks[0] && doc.blocks[0].id)
                       if (target) changeType(target, type)
                     },
                   },
                   t(type),
-                  h(
-                    'kbd',
-                    { className: 'sw-type-key', 'aria-hidden': 'true' },
-                    `${index + 1}`,
-                  ),
                 ),
               ),
             ),
-            h('span', { className: 'sw-hint' }, t('tabHint').replace('{mod}', MOD_LABEL)),
+            h('span', { className: 'sw-hint' }, t('tabHint')),
+            typeTip
+              ? h(
+                  'span',
+                  {
+                    className: 'sw-type-tip',
+                    role: 'tooltip',
+                    style: { left: `${typeTip.left}px`, top: `${typeTip.top}px` },
+                  },
+                  typeTip.text,
+                )
+              : null,
           ),
           h(
             'div',
@@ -1984,12 +2013,12 @@ ${blocks}
 .sw-page-wrap{flex:1 1 auto;min-width:0;overflow-y:auto;padding:0 24px 100px;position:relative;box-sizing:border-box}
 .sw-toolbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:10px 0;background:var(--dsw-alias-bg-base);border-bottom:1px solid var(--dsw-alias-border-l1)}
 .sw-types{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow-x:auto}
-.sw-type{display:inline-flex;align-items:center;gap:5px;border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.sw-type{position:relative;display:inline-flex;align-items:center;border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .sw-type:hover{color:var(--dsw-alias-label-primary)}
 .sw-type--on{background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary)}
 .sw-type:disabled{opacity:.45;cursor:default}
-.sw-type-key{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;opacity:.45;padding:2px 4px;border:1px solid currentColor;border-radius:4px;color:inherit}
-.sw-type:hover .sw-type-key,.sw-type--on .sw-type-key{opacity:.7}
+.sw-type-tip{position:fixed;z-index:60;transform:translate(-50%,-100%);padding:4px 8px;border-radius:6px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);font:600 10.5px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;pointer-events:none;box-shadow:0 12px 28px -16px var(--dsw-alias-border-l2)}
+.sw-type-tip::after{content:'';position:absolute;left:50%;top:100%;margin-top:-1px;transform:translateX(-50%);border:4px solid transparent;border-top-color:var(--dsw-alias-bg-overlay)}
 .sw-hint{margin-left:auto;font-size:10.5px;color:var(--dsw-alias-label-secondary);opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw-paper{width:100%;max-width:816px;margin:24px auto 0;padding:96px 96px 96px 144px;box-sizing:border-box;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);border-radius:3px;box-shadow:0 22px 50px -38px var(--dsw-alias-border-l2);min-height:1056px;font-family:var(--sw-paper-font);font-size:16px;line-height:1.5;color:var(--dsw-alias-label-primary)}
 .sw-page-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:34px;padding-bottom:10px;border-bottom:1px solid var(--dsw-alias-border-l1);opacity:.75}
