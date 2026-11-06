@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A parenthetical arrives with its brackets: switching a line to 括号 wraps it in
+  `（）` (Chinese) or `()` (English) and puts the caret inside. Leaving the element
+  strips them again, and Enter closes the cue before opening the dialogue.
+
 ## [1.3.1] - 2026-11-06
 
 ### Added

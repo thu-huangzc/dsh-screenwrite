@@ -55,6 +55,25 @@ window.__ModuleLoader__.load({
       return TYPE_SHORTCUT[code] || null
     }
 
+    // A parenthetical is a bracket the writer should not have to type.
+    const PAREN_WRAPPED = /^[（(]([\s\S]*)[）)]$/
+
+    function bracketPair(doc, text) {
+      const probe =
+        text || (Array.isArray(doc && doc.blocks) ? doc.blocks.map((block) => block.text || '').join(' ') : '')
+      return WIDE_CHAR.test(probe) ? ['（', '）'] : ['(', ')']
+    }
+
+    function isWrappedParenthetical(text) {
+      const value = String(text || '')
+      return PAREN_WRAPPED.test(value) && value.trim() === value
+    }
+
+    function unwrapParenthetical(text) {
+      const match = String(text || '').match(PAREN_WRAPPED)
+      return match ? match[1] : text
+    }
+
     // The page zooms like a document, not like a web app: pinch on the trackpad
     // or ⌘+ / ⌘-, and the sheet (type and margins together) scales.
     const ZOOM_MIN = 0.5
@@ -1411,10 +1430,29 @@ ${blocks}
           if (!type) return
           const current = docRef.current
           if (!current) return
-          const blocks = current.blocks.map((block) => (block.id === id ? { ...block, type } : block))
+          const block = current.blocks.find((item) => item.id === id)
+          if (!block) return
+          let text = block.text
+          let position = caret
+          if (type === 'parenthetical' && block.type !== 'parenthetical') {
+            // The brackets come with the element; the caret lands between them.
+            if (!isWrappedParenthetical(text)) {
+              const [open, close] = bracketPair(current, text)
+              const inner = String(text || '')
+              text = `${open}${inner}${close}`
+              position = typeof caret === 'number' ? Math.min(inner.length, caret) + 1 : inner.length + 1
+            }
+          } else if (block.type === 'parenthetical' && type !== 'parenthetical') {
+            const plain = unwrapParenthetical(text)
+            if (plain !== text) {
+              text = plain
+              if (typeof caret === 'number') position = Math.max(0, caret - 1)
+            }
+          }
+          const blocks = current.blocks.map((item) => (item.id === id ? { ...item, type, text } : item))
           setSelectedId(id)
           applyLocal({ ...current, blocks })
-          requestFocus(id, caret === undefined ? 'end' : caret)
+          requestFocus(id, position === undefined ? 'end' : position)
         },
         [applyLocal, requestFocus],
       )
@@ -1431,6 +1469,12 @@ ${blocks}
           const index = current.blocks.findIndex((block) => block.id === id)
           if (index < 0) return
           const block = current.blocks[index]
+          // Enter ends the parenthetical where it stands — closing bracket and all
+          // — and opens the dialogue underneath.
+          if (block.type === 'parenthetical') {
+            before = block.text
+            after = ''
+          }
           const created = {
             id: newBlockId(),
             type: after.trim() ? block.type : NEXT_TYPE[block.type] || 'action',
