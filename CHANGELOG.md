@@ -6,24 +6,37 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Fixed
-
-- The update check no longer treats one failed lookup as final: a failure is
-  retried within two minutes and whenever the settings panel opens, and the host
-  falls back to the GitHub release page when the API host is unreachable.
+## [1.4.0] - 2026-11-07
 
 ### Added
 
-- A settings panel behind a gear button next to the library's refresh control (and
-  in the script header): interface language (follow the app, 中文, English), the
-  current version, a check against GitHub releases that also runs quietly every
-  twelve hours (a dot on the gear marks an update), and a link to the issue
+- A settings panel, opened from a cog beside the library's refresh control and from
+  the script header: interface language (follow the app, 中文, English), the plugin
+  version, a check against GitHub releases that also runs on its own every twelve
+  hours (a dot on the cog marks an available update), and a link to the issue
   tracker.
-- Host endpoints `GET /screenplay-api/version` and `GET /screenplay-api/update`
-  back the settings panel; the update lookup is cached for ten minutes.
+- Host endpoints `GET /screenplay-api/version` and `GET /screenplay-api/update`;
+  the release lookup is cached for ten minutes.
 - A parenthetical arrives with its brackets: switching a line to 括号 wraps it in
-  `（）` (Chinese) or `()` (English) and puts the caret inside. Leaving the element
-  strips them again, and Enter closes the cue before opening the dialogue.
+  `（）` for Chinese and `()` for English, with the caret inside; leaving the element
+  strips them again.
+
+### Changed
+
+- The settings rows sit on one line — label on the left, control or status on the
+  right — and the update status names each version once (`1.3.1 → 1.4.0` when
+  something newer exists) in plain secondary text instead of colour.
+
+### Fixed
+
+- One Enter could create two blocks: a held key auto-repeated onto the freshly
+  created line, and an IME commit could deliver the same keydown twice. Repeats are
+  ignored and a block is split at most once per gesture.
+- Enter inside a parenthetical closed the cue in place instead of leaving a stray
+  `）` block behind.
+- The update check no longer treats one failed lookup as final: failures retry
+  within two minutes and whenever the panel opens, and the host falls back to the
+  GitHub release page when the API host is unreachable.
 
 ## [1.3.1] - 2026-11-06
 
