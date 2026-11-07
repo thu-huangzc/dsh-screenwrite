@@ -1,6 +1,6 @@
 {
   "name": "dsh-screenplay",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "description": "A five-element screenplay studio for DeepSeek Harness: a local script library, US Letter pages, PDF and Fountain export, and an agent writing into the same script.",
   "license": "MIT",

@@ -35,6 +35,9 @@ const MAX_TEXT_BYTES = 2 * 1024 * 1024
 
 const REPO = 'thu-huangzc/dsh-screenwrite'
 const UPDATE_TTL = 10 * 60 * 1000
+// GitHub can be slow from mainland networks; a short timeout turns a working
+// but sluggish lookup into a false "unreachable".
+const UPDATE_TIMEOUT = 10 * 1000
 
 let writeQueue = Promise.resolve()
 let seedPromise = null
@@ -61,62 +64,90 @@ function compareVersions(a, b) {
   return 0
 }
 
-/** Ask GitHub for the newest release; cached so the panel can poll cheaply. */
-async function checkForUpdate() {
-  const now = Date.now()
+/** The API route carries richer release data but is rate-limited unauthenticated. */
+async function latestFromApi() {
+  const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+    headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-screenplay' },
+    signal: AbortSignal.timeout(UPDATE_TIMEOUT),
+  })
+  if (!response.ok) throw new Error(`API HTTP ${response.status}`)
+  const data = await response.json()
+  const latest = String(data.tag_name || '').replace(/^v/, '')
+  if (!latest) throw new Error('API returned no release tag')
+  return {
+    latest,
+    url: data.html_url || `https://github.com/${REPO}/releases`,
+    publishedAt: data.published_at || null,
+  }
+}
+
+/**
+ * The release page redirect names the tag too and is not rate-limited. Follow it
+ * and read `response.url`: fetch implementations that hide the Location header
+ * (or return it absolute, as undici does) still yield the final tag URL.
+ */
+async function latestFromPage() {
+  const response = await fetch(`https://github.com/${REPO}/releases/latest`, {
+    redirect: 'follow',
+    headers: { 'user-agent': 'dsh-screenplay' },
+    signal: AbortSignal.timeout(UPDATE_TIMEOUT),
+  })
+  if (!response.ok) throw new Error(`Release page HTTP ${response.status}`)
+  const finalUrl = response.url || `https://github.com/${REPO}/releases/latest`
+  const match = /\/releases\/tag\/(v?[0-9][^/?#]+)/.exec(new URL(finalUrl).pathname)
+  if (!match) throw new Error('Release page has no tag')
+  return {
+    latest: match[1].replace(/^v/, ''),
+    url: finalUrl,
+    publishedAt: null,
+  }
+}
+
+/** First source to answer wins, so a rate-limited API does not delay the page. */
+async function latestRelease() {
+  try {
+    return await Promise.any([latestFromApi(), latestFromPage()])
+  } catch (error) {
+    const reasons =
+      error && Array.isArray(error.errors)
+        ? error.errors.map((item) => String((item && item.message) || item || '')).filter(Boolean)
+        : [String((error && error.message) || error || 'unreachable')]
+    throw new Error(reasons.join(' / ') || 'unreachable')
+  }
+}
+
+/**
+ * Ask GitHub for the newest release; cached so the panel can poll cheaply. A
+ * forced check (the settings button) bypasses the cache, including the short
+ * cache that holds a failed lookup.
+ */
+async function checkForUpdate(options = {}) {
+  const force = Boolean(options.force)
   const ttl = updateCache.value && updateCache.value.error ? 60 * 1000 : UPDATE_TTL
-  if (updateCache.value && now - updateCache.at < ttl) return updateCache.value
+  if (!force && updateCache.value && Date.now() - updateCache.at < ttl) return updateCache.value
   const current = await packageVersion()
   let value
   try {
-    const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-      headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-screenplay' },
-      signal: AbortSignal.timeout(6000),
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const data = await response.json()
-    const latest = String(data.tag_name || '').replace(/^v/, '')
+    const release = await latestRelease()
     value = {
       current,
-      latest: latest || current,
-      url: data.html_url || `https://github.com/${REPO}/releases`,
-      publishedAt: data.published_at || null,
-      hasUpdate: compareVersions(latest, current) > 0,
+      latest: release.latest,
+      url: release.url,
+      publishedAt: release.publishedAt,
+      hasUpdate: compareVersions(release.latest, current) > 0,
       checkedAt: new Date().toISOString(),
     }
   } catch (error) {
-    // api.github.com can be unreachable while github.com itself answers (or the
-    // other way round) — the release page redirect carries the tag as well.
-    try {
-      const response = await fetch(`https://github.com/${REPO}/releases/latest`, {
-        redirect: 'manual',
-        headers: { 'user-agent': 'dsh-screenplay' },
-        signal: AbortSignal.timeout(6000),
-      })
-      const location = response.headers.get('location') || ''
-      const match = /\/releases\/tag\/(v?[0-9][^/?#]*)/.exec(location)
-      if (!match) throw new Error('no release redirect')
-      const latest = match[1].replace(/^v/, '')
-      value = {
-        current,
-        latest,
-        url: `https://github.com${location}`,
-        publishedAt: null,
-        hasUpdate: compareVersions(latest, current) > 0,
-        checkedAt: new Date().toISOString(),
-      }
-    } catch {
-      value = {
-        current,
-        latest: null,
-        hasUpdate: false,
-        error: 'unreachable',
-        reason: String((error && error.message) || error || '').slice(0, 160),
-        checkedAt: new Date().toISOString(),
-      }
+    value = {
+      current,
+      latest: null,
+      hasUpdate: false,
+      error: 'unreachable',
+      reason: String((error && error.message) || error || '').slice(0, 240),
+      checkedAt: new Date().toISOString(),
     }
   }
-  updateCache = { at: now, value }
+  updateCache = { at: Date.now(), value }
   return value
 }
 
@@ -364,7 +395,9 @@ async function routeApi(request, response) {
     }
 
     if (path === '/update' && request.method === 'GET') {
-      sendJson(response, 200, await checkForUpdate())
+      // The settings button asks for a fresh attempt instead of yesterday's
+      // cached failure; the automatic check stays on the cache.
+      sendJson(response, 200, await checkForUpdate({ force: url.searchParams.get('force') === '1' }))
       return
     }
 

@@ -1079,6 +1079,36 @@ ${blocks}
       )
     }
 
+    /** Character offset of a DOM boundary from the start of a block's text. */
+    function offsetFromBlockStart(view, container, offset) {
+      try {
+        const range = document.createRange()
+        range.selectNodeContents(view)
+        range.setEnd(container, offset)
+        return range.toString().length
+      } catch {
+        return 0
+      }
+    }
+
+    /**
+     * The character offset a range boundary names inside `view`, or 0 / the
+     * full length when the boundary sits outside it. A writer can start a drag
+     * in the paper margin, so the endpoint is not always a text node.
+     */
+    function rangeOffsetInView(range, view, isStart) {
+      const container = isStart ? range.startContainer : range.endContainer
+      const offset = isStart ? range.startOffset : range.endOffset
+      if (view.contains(container)) return offsetFromBlockStart(view, container, offset)
+      const whole = document.createRange()
+      whole.selectNodeContents(view)
+      const comparison = isStart
+        ? range.compareBoundaryPoints(Range.START_TO_START, whole)
+        : range.compareBoundaryPoints(Range.END_TO_END, whole)
+      if (isStart) return comparison <= 0 ? 0 : view.textContent.length
+      return comparison >= 0 ? view.textContent.length : 0
+    }
+
     const BlockEditor = React.memo(function BlockEditor({ block, t, onText, onType, onSplit, onMerge, onMove, onFocus, onSave, register }) {
       const ref = useRef(null)
 
@@ -1186,7 +1216,15 @@ ${blocks}
             className: `sw-view${empty ? ' sw-view--empty' : ''}`,
             'aria-label': t(block.type),
             'aria-readonly': true,
-            onClick: () => onEdit(block.id),
+            onClick: () => {
+              // The click that ends a drag-selection must not trade the
+              // selection for a textarea, or Backspace has nothing to act on.
+              // A plain click collapses the selection first, so this guard
+              // only catches the drag.
+              const selection = window.getSelection()
+              if (selection && !selection.isCollapsed) return
+              onEdit(block.id)
+            },
           },
           empty ? t(`ph_${block.type}`) : block.text,
         ),
@@ -1322,10 +1360,13 @@ ${blocks}
         }
       }, [])
 
-      const runUpdateCheck = useCallback(async () => {
+      const runUpdateCheck = useCallback(async (options = {}) => {
+        const force = Boolean(options.force)
         setChecking(true)
         try {
-          const data = await request('/update')
+          // The manual button must not read back the host's 60-second error
+          // cache — a network that just came back has to be able to recover.
+          const data = await request(`/update${force ? '?force=1' : ''}`)
           setUpdate(data)
           try {
             localStorage.setItem(UPDATE_STORE, JSON.stringify(data))
@@ -1458,6 +1499,82 @@ ${blocks}
           if (saveFnRef.current) saveFnRef.current()
         }, 900)
       }, [])
+
+      /**
+       * Backspace / Delete on a selection that spans the paper. Only one block
+       * is a textarea, so the browser treats the rest of the script as plain
+       * text and leaves the key to the focused textarea (which then merges a
+       * line or edits its own caret). Delete the range ourselves instead:
+       * trim the first and last block, drop the rows between, and merge the
+       * surviving halves into the first block.
+       */
+      const deletePaperSelection = useCallback(() => {
+        const selection = window.getSelection()
+        if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false
+        const current = docRef.current
+        const wrap = pageWrapRef.current
+        const paper = wrap && wrap.querySelector('.sw-paper')
+        if (!current || !paper) return false
+        const range = selection.getRangeAt(0)
+        if (!paper.contains(range.startContainer) || !paper.contains(range.endContainer)) return false
+
+        const rows = []
+        for (const row of paper.querySelectorAll('.sw-block[data-block-id]')) {
+          let hit = false
+          try {
+            hit = range.intersectsNode(row)
+          } catch {
+            hit = false
+          }
+          if (!hit) continue
+          // A textarea's value is not part of the document selection. Deleting
+          // across one would drop text the writer never saw highlighted.
+          if (row.querySelector('textarea')) return false
+          rows.push(row)
+        }
+        if (rows.length === 0) return false
+
+        const startRow = rows[0]
+        const endRow = rows[rows.length - 1]
+        const startView = startRow.querySelector('.sw-view')
+        const endView = endRow.querySelector('.sw-view')
+        if (!startView || !endView) return false
+        const blocks = current.blocks
+        const startIndex = blocks.findIndex((block) => block.id === startRow.getAttribute('data-block-id'))
+        const endIndex = blocks.findIndex((block) => block.id === endRow.getAttribute('data-block-id'))
+        if (startIndex < 0 || endIndex < 0) return false
+
+        const startBlock = blocks[startIndex]
+        const endBlock = blocks[endIndex]
+        const startOffset = Math.max(
+          0,
+          Math.min(rangeOffsetInView(range, startView, true), startBlock.text.length),
+        )
+        const endOffset = Math.max(0, Math.min(rangeOffsetInView(range, endView, false), endBlock.text.length))
+        if (startIndex === endIndex && startOffset === endOffset) return false
+
+        const nextBlocks = blocks.slice()
+        if (startIndex === endIndex) {
+          nextBlocks[startIndex] = {
+            ...startBlock,
+            text: startBlock.text.slice(0, startOffset) + startBlock.text.slice(endOffset),
+          }
+        } else {
+          nextBlocks.splice(startIndex, endIndex - startIndex + 1, {
+            ...startBlock,
+            text: startBlock.text.slice(0, startOffset) + endBlock.text.slice(endOffset),
+          })
+        }
+        setSelectedId(startBlock.id)
+        applyLocal({ ...current, blocks: nextBlocks })
+        try {
+          selection.removeAllRanges()
+        } catch {
+          // The range may already be gone.
+        }
+        requestFocus(startBlock.id, startOffset)
+        return true
+      }, [applyLocal, requestFocus])
 
       const saveDocument = useCallback(
         async (options = {}) => {
@@ -1905,6 +2022,24 @@ ${blocks}
         return () => window.removeEventListener('keydown', onKey)
       }, [doc && doc.id, saveDocument, editingId, selectedId, changeType, applyZoom])
 
+      // A selection made across the paper is DOM text, so the key has to be
+      // caught before the focused textarea sees it. Capture phase, native
+      // listener: React's handler sits below window and would otherwise merge
+      // the block at the caret instead of deleting the range.
+      useEffect(() => {
+        if (!doc) return undefined
+        const onKey = (event) => {
+          if (event.isComposing || event.keyCode === 229) return
+          if (event.metaKey || event.ctrlKey || event.altKey) return
+          if (event.key !== 'Backspace' && event.key !== 'Delete') return
+          if (!deletePaperSelection()) return
+          event.preventDefault()
+          event.stopPropagation()
+        }
+        window.addEventListener('keydown', onKey, true)
+        return () => window.removeEventListener('keydown', onKey, true)
+      }, [doc && doc.id, deletePaperSelection])
+
       // Trackpad pinch arrives as a wheel with ctrlKey set. Listening natively
       // keeps the handler non-passive so the gesture does not also zoom the app.
       useEffect(() => {
@@ -2097,7 +2232,7 @@ ${blocks}
       const openSettings = () => {
         setSettingsOpen(true)
         const stale = update && update.error && (!update.checkedAt || Date.now() - Date.parse(update.checkedAt) > 30 * 1000)
-        if (stale) runUpdateCheck()
+        if (stale) runUpdateCheck({ force: true })
       }
 
       const settingsButton = h(
@@ -2122,7 +2257,7 @@ ${blocks}
             version,
             update,
             checking,
-            onCheck: runUpdateCheck,
+            onCheck: () => runUpdateCheck({ force: true }),
           })
         : null
 
@@ -2543,7 +2678,20 @@ ${blocks}
           ),
           h(
             'div',
-            { className: 'sw-paper', style: { zoom: `${zoom}` } },
+            {
+              className: 'sw-paper',
+              style: { zoom: `${zoom}` },
+              onMouseDown: (event) => {
+                if (!editingId || event.button !== 0) return
+                const target = event.target
+                const row = target && target.closest ? target.closest('.sw-block[data-block-id]') : null
+                if (row && row.getAttribute('data-block-id') === editingId) return
+                // A drag that starts outside the live textarea must not cross
+                // it: the textarea's value stays out of the document selection.
+                // Ending edit mode first turns every line into selectable text.
+                setEditingId(null)
+              },
+            },
             h(
               'div',
               { className: 'sw-page-head' },

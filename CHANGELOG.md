@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-07
+
+### Fixed
+
+- A box selection across lines can be deleted: Backspace or Delete trims the
+  selected range out of the first and last line and drops the lines between.
+  Starting a drag outside the line being edited closes its textarea first, so
+  the selection includes every line it crosses, and a click that ends a
+  drag-selection no longer replaces the selection with a textarea.
+- The update check no longer reports a false "GitHub unreachable" when the
+  unauthenticated API is rate-limited or slow: the API and the release page are
+  asked at the same time, the page redirect is followed to its tag, and the
+  timeout leaves room for a slow mainland connection. The release link from
+  that page is no longer double-prefixed with `https://github.com`.
+- A manual "检查更新" now forces a fresh lookup instead of reading back the
+  short-lived cached failure, so a network that has just recovered can update
+  without waiting for the cache to expire.
+
 ## [1.4.0] - 2026-11-07
 
 ### Added
