@@ -163,14 +163,13 @@ window.__ModuleLoader__.load({
         settingsUpdate: '版本更新',
         settingsCheck: '检查更新',
         settingsChecking: '正在检查…',
-        settingsLatest: '已是最新版本（{version}）',
-        settingsNewest: '发现新版本 {version}',
-        settingsUnreachable: '暂时连不上 GitHub，请稍后再试。',
+        settingsLatest: '已是最新（{version}）',
+        settingsNewest: '{from} → {to}',
+        settingsUnreachable: '暂时连不上 GitHub',
         settingsOpenRelease: '打开下载页',
         settingsFeedback: '问题反馈',
         settingsFeedbackHint: '遇到 bug，或者想要新功能？',
         settingsOpenIssues: 'GitHub Issues',
-        settingsVersion: '当前版本',
         close: '关闭',
         retry: '重试',
         startWriting: '写下第一场',
@@ -236,13 +235,12 @@ window.__ModuleLoader__.load({
         settingsCheck: 'Check for updates',
         settingsChecking: 'Checking…',
         settingsLatest: 'Up to date ({version})',
-        settingsNewest: 'Version {version} is available',
-        settingsUnreachable: 'Could not reach GitHub. Try again later.',
+        settingsNewest: '{from} → {to}',
+        settingsUnreachable: 'GitHub unreachable',
         settingsOpenRelease: 'Open the release page',
         settingsFeedback: 'Feedback',
         settingsFeedbackHint: 'Found a bug or want a feature?',
         settingsOpenIssues: 'GitHub Issues',
-        settingsVersion: 'Version',
         close: 'Close',
         retry: 'Retry',
         startWriting: 'Write the first scene',
@@ -978,18 +976,16 @@ ${blocks}
       }, [onClose])
 
       let status = ''
-      let tone = ''
       if (checking) {
         status = t('settingsChecking')
       } else if (update && update.error) {
         status = t('settingsUnreachable')
-        tone = 'warn'
       } else if (update && update.hasUpdate) {
-        status = t('settingsNewest').replace('{version}', update.latest || '')
-        tone = 'new'
+        status = t('settingsNewest')
+          .replace('{from}', update.current || version || '')
+          .replace('{to}', update.latest || '')
       } else if (update) {
         status = t('settingsLatest').replace('{version}', update.current || version || '')
-        tone = 'ok'
       }
 
       const languages = [
@@ -1043,30 +1039,29 @@ ${blocks}
           ),
           h(
             'section',
-            { className: 'sw-sheet-row sw-sheet-row--stack' },
+            { className: 'sw-sheet-row' },
             h('div', { className: 'sw-sheet-label' }, t('settingsUpdate')),
             h(
               'div',
-              { className: 'sw-sheet-line' },
-              h('span', { className: 'sw-muted' }, `${t('settingsVersion')} ${version || (update && update.current) || '—'}`),
+              { className: 'sw-update' },
+              status ? h('span', { className: 'sw-update-state' }, status) : null,
+              update && update.hasUpdate && update.url
+                ? h(
+                    'a',
+                    { className: 'sw-link sw-link--inline', href: update.url, target: '_blank', rel: 'noreferrer noopener' },
+                    t('settingsOpenRelease'),
+                  )
+                : null,
               h(
                 'button',
                 { type: 'button', className: 'sw-btn', onClick: onCheck, disabled: checking },
                 t('settingsCheck'),
               ),
             ),
-            status ? h('p', { className: `sw-sheet-note${tone ? ` sw-sheet-note--${tone}` : ''}` }, status) : null,
-            update && update.hasUpdate && update.url
-              ? h(
-                  'a',
-                  { className: 'sw-link', href: update.url, target: '_blank', rel: 'noreferrer noopener' },
-                  t('settingsOpenRelease'),
-                )
-              : null,
           ),
           h(
             'section',
-            { className: 'sw-sheet-row sw-sheet-row--stack' },
+            { className: 'sw-sheet-row' },
             h('div', { className: 'sw-sheet-label' }, t('settingsFeedback')),
             h(
               'p',
@@ -2728,17 +2723,14 @@ ${blocks}
 .sw-sheet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1)}
 .sw-sheet-row--stack{display:block}
 .sw-sheet-label{font-size:12.5px;font-weight:600}
-.sw-sheet-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.sw-update{display:flex;align-items:center;gap:10px;min-width:0}
+.sw-update-state{font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw-muted{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:6px 0 0}
 .sw-seg{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
 .sw-seg-item{border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .sw-seg-item:hover{color:var(--dsw-alias-label-primary)}
 .sw-seg-item--on{background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary)}
-.sw-sheet-note{font-size:11.5px;line-height:1.5;margin:8px 0 0;color:var(--dsw-alias-label-secondary)}
-.sw-sheet-note--ok{color:var(--dsw-alias-state-success-primary)}
-.sw-sheet-note--new{color:var(--dsw-alias-brand-primary)}
-.sw-sheet-note--warn{color:var(--dsw-alias-state-warn-primary)}
-.sw-feedback{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:10px 0 0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.sw-feedback{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:0;display:flex;align-items:baseline;justify-content:flex-end;gap:4px 6px;flex-wrap:wrap;text-align:right}
 .sw-link{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--dsw-alias-brand-primary);text-decoration:none}
 .sw-link:hover{text-decoration:underline}
 .sw-link--inline{margin-top:0}
