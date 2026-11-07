@@ -1,9 +1,9 @@
 {
   "name": "dsh-screenplay",
   "version": "1.4.0",
-  "private": true,
   "type": "module",
-  "description": "Professional five-element screenplay studio for DSH: writing-draft editing, Fountain interchange, print-ready pages, and agent co-writing.",
+  "description": "A five-element screenplay studio for DeepSeek Harness: a local script library, US Letter pages, PDF and Fountain export, and an agent writing into the same script.",
+  "license": "MIT",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -18,8 +18,19 @@
     "locale/*.json",
     "icon.svg",
     "README.md",
+    "CHANGELOG.md",
     "docs/*.md",
     "samples/*.fountain"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "screenplay",
+    "screenwriting",
+    "script",
+    "fountain",
+    "pdf"
   ],
   "dsh": {
     "bundle": {
@@ -30,10 +41,20 @@
       "immediately": true
     }
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "author": "thu-huangzc (https://github.com/thu-huangzc)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thu-huangzc/dsh-screenwrite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thu-huangzc/dsh-screenwrite/issues"
   },
   "homepage": "https://github.com/thu-huangzc/dsh-screenwrite#readme"
 }

@@ -8,22 +8,38 @@ Look for **Screenplay studio** in the sidebar.
 
 ## Install
 
-Requires DeepSeek Harness.
+Requires DeepSeek Harness. The bundle is published on npm as **`dsh-screenplay`**.
 
-```bash
-git clone git@github.com:thu-huangzc/dsh-screenwrite.git
+**From the plugin manager (recommended).** Install the bundle by its npm name:
+
+```text
+install_bundle   target: dsh-screenplay
 ```
 
-Register the folder in `~/.dsh/profiles/<profile>/package.json`:
+**By hand.** Add it to `~/.dsh/profiles/<profile>/package.json`, then install:
 
 ```json
 {
-  "dependencies": { "dsh-screenplay": "link:/absolute/path/to/dsh-screenwrite" },
+  "dependencies": { "dsh-screenplay": "^1.4.0" },
   "dsh": { "profile": { "bundles": ["…", "dsh-screenplay"] } }
 }
 ```
 
-Restart Harness. What has to agree is the package `name`, `cordis.patch.yml`'s `name`, the `id` at the top of `client.js` and the name in `dsh.profile.bundles` — all `dsh-screenplay`. The folder may be called anything.
+```bash
+cd ~/.dsh/profiles/<profile> && pnpm install
+```
+
+Restart Harness and look for **Screenplay studio** in the sidebar.
+
+**From a checkout** — for working on the plugin itself — link the folder instead:
+
+```json
+"dependencies": { "dsh-screenplay": "link:/absolute/path/to/dsh-screenwrite" }
+```
+
+Either way the package `name`, `cordis.patch.yml`'s `name`, the `id` at the top of
+`client.js` and the entry in `dsh.profile.bundles` have to agree — all read
+`dsh-screenplay`. The folder may be called anything.
 
 ## Writing
 

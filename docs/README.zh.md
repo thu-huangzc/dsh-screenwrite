@@ -8,28 +8,36 @@
 
 ## 安装
 
-需要先装好 DeepSeek Harness。
+需要先装好 DeepSeek Harness。插件已发布到 npm，包名 **`dsh-screenplay`**。
 
-```bash
-git clone git@github.com:thu-huangzc/dsh-screenwrite.git
+**用插件管理器（推荐）**：按 npm 包名安装：
+
+```text
+install_bundle   target: dsh-screenplay
 ```
 
-把插件目录登记到 `~/.dsh/profiles/<profile>/package.json`：
+**手动安装**：把插件写进 `~/.dsh/profiles/<profile>/package.json`，然后安装依赖：
 
 ```json
 {
-  "dependencies": { "dsh-screenplay": "link:/absolute/path/to/dsh-screenwrite" },
+  "dependencies": { "dsh-screenplay": "^1.4.0" },
   "dsh": { "profile": { "bundles": ["…", "dsh-screenplay"] } }
 }
 ```
 
-重启 Harness 即可。真正要一致的是 `package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 顶部的 `id`，以及 bundles 列表里的名字，四处都写 `dsh-screenplay`；文件夹叫什么名字不影响加载。
-
-也可以直接用插件管理器安装（需要 profile 写权限）：
-
-```text
-install_bundle  target: link:/absolute/path/to/dsh-screenwrite
+```bash
+cd ~/.dsh/profiles/<profile> && pnpm install
 ```
+
+重启 Harness，左侧边栏就会出现「剧本」。
+
+**从源码目录安装**（改插件时用）：改用本地链接即可：
+
+```json
+"dependencies": { "dsh-screenplay": "link:/absolute/path/to/dsh-screenwrite" }
+```
+
+无论哪种方式，`package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 顶部的 `id`、以及 bundles 列表里的名字都要写 `dsh-screenplay`；文件夹叫什么名字不影响。
 
 ## 写作
 
