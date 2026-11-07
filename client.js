@@ -168,8 +168,8 @@ window.__ModuleLoader__.load({
         settingsUnreachable: '暂时连不上 GitHub，请稍后再试。',
         settingsOpenRelease: '打开下载页',
         settingsFeedback: '问题反馈',
-        settingsFeedbackHint: '遇到 bug，或者想要新功能？到 GitHub 开个 issue。',
-        settingsOpenIssues: '打开 GitHub Issues',
+        settingsFeedbackHint: '遇到 bug，或者想要新功能？',
+        settingsOpenIssues: 'GitHub Issues',
         settingsVersion: '当前版本',
         close: '关闭',
         retry: '重试',
@@ -240,8 +240,8 @@ window.__ModuleLoader__.load({
         settingsUnreachable: 'Could not reach GitHub. Try again later.',
         settingsOpenRelease: 'Open the release page',
         settingsFeedback: 'Feedback',
-        settingsFeedbackHint: 'Found a bug or want a feature? Open an issue on GitHub.',
-        settingsOpenIssues: 'Open GitHub Issues',
+        settingsFeedbackHint: 'Found a bug or want a feature?',
+        settingsOpenIssues: 'GitHub Issues',
         settingsVersion: 'Version',
         close: 'Close',
         retry: 'Retry',
@@ -1068,11 +1068,16 @@ ${blocks}
             'section',
             { className: 'sw-sheet-row sw-sheet-row--stack' },
             h('div', { className: 'sw-sheet-label' }, t('settingsFeedback')),
-            h('p', { className: 'sw-muted' }, t('settingsFeedbackHint')),
             h(
-              'a',
-              { className: 'sw-link', href: `${REPO_URL}/issues/`, target: '_blank', rel: 'noreferrer noopener' },
-              t('settingsOpenIssues'),
+              'p',
+              { className: 'sw-feedback' },
+              t('settingsFeedbackHint'),
+              ' ',
+              h(
+                'a',
+                { className: 'sw-link sw-link--inline', href: `${REPO_URL}/issues/`, target: '_blank', rel: 'noreferrer noopener' },
+                t('settingsOpenIssues'),
+              ),
             ),
           ),
         ),
@@ -1358,9 +1363,13 @@ ${blocks}
         } catch {
           cached = null
         }
-        if (cached && cached.checkedAt && Date.now() - Date.parse(cached.checkedAt) < UPDATE_INTERVAL) {
+        if (cached && cached.checkedAt) {
+          const age = Date.now() - Date.parse(cached.checkedAt)
           setUpdate(cached)
-          return
+          // A failed lookup is worth retrying soon — the network may simply not
+          // have been up when the panel opened.
+          if (!cached.error && age < UPDATE_INTERVAL) return
+          if (cached.error && age < 2 * 60 * 1000) return
         }
         runUpdateCheck()
       }, [runUpdateCheck])
@@ -2090,12 +2099,18 @@ ${blocks}
 
       // The library has no top bar: it opens straight into 剧本库. The bar only
       // exists in the editor, where it carries the back button, doc meta and export.
+      const openSettings = () => {
+        setSettingsOpen(true)
+        const stale = update && update.error && (!update.checkedAt || Date.now() - Date.parse(update.checkedAt) > 30 * 1000)
+        if (stale) runUpdateCheck()
+      }
+
       const settingsButton = h(
         'button',
         {
           type: 'button',
           className: 'sw-icon-btn sw-gear',
-          onClick: () => setSettingsOpen(true),
+          onClick: openSettings,
           title: t('settings'),
           'aria-label': t('settings'),
         },
@@ -2723,8 +2738,10 @@ ${blocks}
 .sw-sheet-note--ok{color:var(--dsw-alias-state-success-primary)}
 .sw-sheet-note--new{color:var(--dsw-alias-brand-primary)}
 .sw-sheet-note--warn{color:var(--dsw-alias-state-warn-primary)}
+.sw-feedback{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:10px 0 0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .sw-link{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--dsw-alias-brand-primary);text-decoration:none}
 .sw-link:hover{text-decoration:underline}
+.sw-link--inline{margin-top:0}
 .sw-gear{position:relative}
 .sw-gear-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-brand-primary);box-shadow:0 0 0 2px var(--dsw-alias-bg-base)}
 .sw-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:20;padding:9px 14px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);font-size:12.5px;box-shadow:0 10px 30px -16px var(--dsw-alias-border-l2);max-width:min(560px,calc(100vw - 32px))}

@@ -64,7 +64,8 @@ function compareVersions(a, b) {
 /** Ask GitHub for the newest release; cached so the panel can poll cheaply. */
 async function checkForUpdate() {
   const now = Date.now()
-  if (updateCache.value && now - updateCache.at < UPDATE_TTL) return updateCache.value
+  const ttl = updateCache.value && updateCache.value.error ? 60 * 1000 : UPDATE_TTL
+  if (updateCache.value && now - updateCache.at < ttl) return updateCache.value
   const current = await packageVersion()
   let value
   try {
@@ -83,8 +84,37 @@ async function checkForUpdate() {
       hasUpdate: compareVersions(latest, current) > 0,
       checkedAt: new Date().toISOString(),
     }
-  } catch {
-    value = { current, latest: null, hasUpdate: false, error: 'unreachable', checkedAt: new Date().toISOString() }
+  } catch (error) {
+    // api.github.com can be unreachable while github.com itself answers (or the
+    // other way round) — the release page redirect carries the tag as well.
+    try {
+      const response = await fetch(`https://github.com/${REPO}/releases/latest`, {
+        redirect: 'manual',
+        headers: { 'user-agent': 'dsh-screenplay' },
+        signal: AbortSignal.timeout(6000),
+      })
+      const location = response.headers.get('location') || ''
+      const match = /\/releases\/tag\/(v?[0-9][^/?#]*)/.exec(location)
+      if (!match) throw new Error('no release redirect')
+      const latest = match[1].replace(/^v/, '')
+      value = {
+        current,
+        latest,
+        url: `https://github.com${location}`,
+        publishedAt: null,
+        hasUpdate: compareVersions(latest, current) > 0,
+        checkedAt: new Date().toISOString(),
+      }
+    } catch {
+      value = {
+        current,
+        latest: null,
+        hasUpdate: false,
+        error: 'unreachable',
+        reason: String((error && error.message) || error || '').slice(0, 160),
+        checkedAt: new Date().toISOString(),
+      }
+    }
   }
   updateCache = { at: now, value }
   return value

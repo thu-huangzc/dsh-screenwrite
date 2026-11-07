@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The update check no longer treats one failed lookup as final: a failure is
+  retried within two minutes and whenever the settings panel opens, and the host
+  falls back to the GitHub release page when the API host is unreachable.
+
 ### Added
 
 - A settings panel behind a gear button next to the library's refresh control (and
