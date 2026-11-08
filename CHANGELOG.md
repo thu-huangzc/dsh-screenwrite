@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-11-08
+
+### Changed
+
+- The Chinese element labels read 动作/事情 and 插入说明, replacing 动作/描述 and
+  括号. The English labels stay Action / description and Parenthetical.
+
 ## [1.4.1] - 2026-11-07
 
 ### Fixed
