@@ -183,7 +183,6 @@ window.__ModuleLoader__.load({
         settingsLanguage: '语言',
         settingsLangAuto: '跟随应用',
         settingsVersion: '版本',
-        settingsUpdateHint: '更新由 Harness 插件页管理',
         settingsFeedback: '问题反馈',
         settingsFeedbackHint: '遇到 bug，或者想要新功能？',
         settingsOpenIssues: 'GitHub Issues',
@@ -249,7 +248,6 @@ window.__ModuleLoader__.load({
         settingsLanguage: 'Language',
         settingsLangAuto: 'Follow app',
         settingsVersion: 'Version',
-        settingsUpdateHint: 'Updates are managed on the Harness plugin page',
         settingsFeedback: 'Feedback',
         settingsFeedbackHint: 'Found a bug or want a feature?',
         settingsOpenIssues: 'GitHub Issues',
@@ -1040,12 +1038,7 @@ ${blocks}
             'section',
             { className: 'sw-sheet-row' },
             h('div', { className: 'sw-sheet-label' }, t('settingsVersion')),
-            h(
-              'div',
-              { className: 'sw-meta' },
-              h('span', { className: 'sw-meta-value' }, version ? `v${version}` : '—'),
-              h('span', { className: 'sw-meta-hint' }, t('settingsUpdateHint')),
-            ),
+            h('div', { className: 'sw-meta-value' }, version ? `v${version}` : '—'),
           ),
           h(
             'section',
@@ -2811,9 +2804,7 @@ ${blocks}
 .sw-sheet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1)}
 .sw-sheet-row--stack{display:block}
 .sw-sheet-label{font-size:12.5px;font-weight:600}
-.sw-meta{display:flex;align-items:baseline;gap:8px;min-width:0}
 .sw-meta-value{font-size:12px;color:var(--dsw-alias-label-primary);white-space:nowrap}
-.sw-meta-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw-muted{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:6px 0 0}
 .sw-seg{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
 .sw-seg-item{border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
