@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-11-09
+
+### Changed
+
+- Releases go out from GitHub Actions: pushing a `v*` tag checks that the tag
+  matches `package.json`, publishes to npm with provenance through trusted
+  publishing (OIDC), and opens the matching GitHub release. A release no longer
+  needs a local publish with a one-time password. The plugin itself is unchanged.
+
 ## [1.6.1] - 2026-11-09
 
 ### Changed
