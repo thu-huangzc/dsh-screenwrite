@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-11-09
+
+### Changed
+
+- The Chinese product name reads **剧本创作**, replacing 剧本工坊 — on the plugin
+  card, in the page title, in the agent's prompt section, and in the docs. The
+  sidebar entry (剧本) and the English name (Screenwrite studio) are unchanged.
+
 ## [1.6.2] - 2026-11-09
 
 ### Changed

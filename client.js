@@ -132,7 +132,7 @@ window.__ModuleLoader__.load({
     const DICT = {
       zh: {
         nav: '剧本',
-        title: '剧本工坊',
+        title: '剧本创作',
         libraryTitle: '剧本库',
         librarySub: '本地自动保存，发挥想象，尽情创作',
         newScript: '新建剧本',

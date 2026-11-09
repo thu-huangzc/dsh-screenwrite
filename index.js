@@ -628,7 +628,7 @@ const PROMPT_SECTION = {
   order: 700,
   text: [
     '## Screenwrite studio',
-    'A local screenplay library is available in the DSH sidebar (剧本工坊). When the request involves a script — writing, continuing, restructuring, or reviewing — work in that library with the `screenwrite` tool. Read the current script before rewriting it, and prefer targeted write/append edits over pasting the whole script into chat.',
+    'A local screenplay library is available in the DSH sidebar (剧本创作). When the request involves a script — writing, continuing, restructuring, or reviewing — work in that library with the `screenwrite` tool. Read the current script before rewriting it, and prefer targeted write/append edits over pasting the whole script into chat.',
     'Use a five-element page: scene heading, action/description, character name, parenthetical, dialogue. Fountain-like title page: `Title:`/`Author:`. Scene headings may be `内景 咖啡馆 - 日` or `INT. COFFEE - DAY`; action in present tense; a character name on its own line with dialogue beneath; parentheticals in （）.',
     'Write the master scene, not a shot list: no scene numbers, no transitions, no camera/shot language. Only what can be seen or heard — never what a character thinks or realizes. Action over talk; keep it concise and specific.',
     'Craft: give each scene a want, an obstacle and a turn; enter late and leave early; make dialogue specific to the character. A feature draft is about 100 pages. Reply to the user in their language, and describe changes by scene rather than reciting the whole script.',

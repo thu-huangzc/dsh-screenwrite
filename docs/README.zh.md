@@ -1,4 +1,4 @@
-# 剧本工坊 · DSH 插件
+# 剧本创作 · DSH 插件
 
 [English](../README.md) | 中文
 
