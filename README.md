@@ -8,19 +8,14 @@ Look for **Screenwrite studio** in the sidebar.
 
 ## Install
 
-Requires DeepSeek Harness. The bundle is published on npm as **`dsh-screenwrite`**.
+Requires DeepSeek Harness. The bundle is not on npm yet — the repository is the
+source of truth, so link a checkout for now.
 
-**From the plugin manager (recommended).** Install the bundle by its npm name:
-
-```text
-install_bundle   target: dsh-screenwrite
-```
-
-**By hand.** Add it to `~/.dsh/profiles/<profile>/package.json`, then install:
+**From a checkout.** Add the folder to `~/.dsh/profiles/<profile>/package.json`:
 
 ```json
 {
-  "dependencies": { "dsh-screenwrite": "^1.5.0" },
+  "dependencies": { "dsh-screenwrite": "link:/absolute/path/to/dsh-screenwrite" },
   "dsh": { "profile": { "bundles": ["…", "dsh-screenwrite"] } }
 }
 ```
@@ -31,10 +26,18 @@ cd ~/.dsh/profiles/<profile> && pnpm install
 
 Restart Harness and look for **Screenwrite studio** in the sidebar.
 
-**From a checkout** — for working on the plugin itself — link the folder instead:
+**From npm** — once `dsh-screenwrite` is published. (No copy of this plugin has
+ever been on the registry, including the earlier `dsh-screenplay` name.)
 
 ```json
-"dependencies": { "dsh-screenwrite": "link:/absolute/path/to/dsh-screenwrite" }
+{
+  "dependencies": { "dsh-screenwrite": "^1.5.1" },
+  "dsh": { "profile": { "bundles": ["…", "dsh-screenwrite"] } }
+}
+```
+
+```text
+install_bundle   target: dsh-screenwrite
 ```
 
 Either way the package `name`, `cordis.patch.yml`'s `name`, the `id` at the top of

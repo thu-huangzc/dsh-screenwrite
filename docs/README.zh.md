@@ -8,19 +8,13 @@
 
 ## 安装
 
-需要先装好 DeepSeek Harness。插件已发布到 npm，包名 **`dsh-screenwrite`**。
+需要先装好 DeepSeek Harness。插件目前还没发到 npm，仓库就是唯一来源，先用本地链接装。
 
-**用插件管理器（推荐）**：按 npm 包名安装：
-
-```text
-install_bundle   target: dsh-screenwrite
-```
-
-**手动安装**：把插件写进 `~/.dsh/profiles/<profile>/package.json`，然后安装依赖：
+**从源码目录安装**：把目录写进 `~/.dsh/profiles/<profile>/package.json`：
 
 ```json
 {
-  "dependencies": { "dsh-screenwrite": "^1.5.0" },
+  "dependencies": { "dsh-screenwrite": "link:/absolute/path/to/dsh-screenwrite" },
   "dsh": { "profile": { "bundles": ["…", "dsh-screenwrite"] } }
 }
 ```
@@ -31,10 +25,17 @@ cd ~/.dsh/profiles/<profile> && pnpm install
 
 重启 Harness，左侧边栏就会出现「剧本」。
 
-**从源码目录安装**（改插件时用）：改用本地链接即可：
+**用 npm 安装**——等 `dsh-screenwrite` 发布之后。（这个插件从没上过 registry，早期的 `dsh-screenplay` 名字也没有。）
 
 ```json
-"dependencies": { "dsh-screenwrite": "link:/absolute/path/to/dsh-screenwrite" }
+{
+  "dependencies": { "dsh-screenwrite": "^1.5.1" },
+  "dsh": { "profile": { "bundles": ["…", "dsh-screenwrite"] } }
+}
+```
+
+```text
+install_bundle   target: dsh-screenwrite
 ```
 
 无论哪种方式，`package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 顶部的 `id`、以及 bundles 列表里的名字都要写 `dsh-screenwrite`；文件夹叫什么名字不影响。
