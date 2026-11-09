@@ -8,20 +8,20 @@
 
 ## 安装
 
-需要先装好 DeepSeek Harness。插件已发布到 npm，包名 **`dsh-screenplay`**。
+需要先装好 DeepSeek Harness。插件已发布到 npm，包名 **`dsh-screenwrite`**。
 
 **用插件管理器（推荐）**：按 npm 包名安装：
 
 ```text
-install_bundle   target: dsh-screenplay
+install_bundle   target: dsh-screenwrite
 ```
 
 **手动安装**：把插件写进 `~/.dsh/profiles/<profile>/package.json`，然后安装依赖：
 
 ```json
 {
-  "dependencies": { "dsh-screenplay": "^1.4.0" },
-  "dsh": { "profile": { "bundles": ["…", "dsh-screenplay"] } }
+  "dependencies": { "dsh-screenwrite": "^1.5.0" },
+  "dsh": { "profile": { "bundles": ["…", "dsh-screenwrite"] } }
 }
 ```
 
@@ -34,10 +34,10 @@ cd ~/.dsh/profiles/<profile> && pnpm install
 **从源码目录安装**（改插件时用）：改用本地链接即可：
 
 ```json
-"dependencies": { "dsh-screenplay": "link:/absolute/path/to/dsh-screenwrite" }
+"dependencies": { "dsh-screenwrite": "link:/absolute/path/to/dsh-screenwrite" }
 ```
 
-无论哪种方式，`package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 顶部的 `id`、以及 bundles 列表里的名字都要写 `dsh-screenplay`；文件夹叫什么名字不影响。
+无论哪种方式，`package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 顶部的 `id`、以及 bundles 列表里的名字都要写 `dsh-screenwrite`；文件夹叫什么名字不影响。
 
 ## 写作
 
@@ -45,7 +45,7 @@ cd ~/.dsh/profiles/<profile> && pnpm install
 - 鼠标移到格式按钮上，会在按钮正上方浮出它的快捷键提示。
 - 左侧场景栏跟随正文滚动；点一下场景就能跳过去。
 - 导出：PDF（浏览器内直接生成，不走打印）、Fountain、纯文本、独立 HTML。HTML 带封面页，双击就能当阅读稿看。
-- 剧本是 `~/.dsh/screenplay/scripts/` 下的 JSON 文件，全部留在本机。
+- 剧本是 `~/.dsh/screenwrite/scripts/` 下的 JSON 文件，全部留在本机；旧的 `~/.dsh/screenplay/` 剧本库会在第一次打开时自动搬过去。
 - 第一次打开空剧本库时，会放入一个原创示例《Night Shift》（`samples/`），让稿纸上先有东西可看。
 
 ## 格式
@@ -74,7 +74,7 @@ PDF 按写作稿排版：标题页只有片名和署名，正文左 1.5 英寸�
 
 ## Agent
 
-插件注册了 `screenplay` 工具：`list`、`read`、`create`、`write`、`append`、`rename`、`delete`。让 Agent 先读当前稿，再按场说明它改了什么——不要让它把整本剧本贴回聊天。
+插件注册了 `screenwrite` 工具：`list`、`read`、`create`、`write`、`append`、`rename`、`delete`。让 Agent 先读当前稿，再按场说明它改了什么——不要让它把整本剧本贴回聊天。
 
 ## 许可
 

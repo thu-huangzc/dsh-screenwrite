@@ -1,13 +1,13 @@
 /**
- * Screenplay studio — Host half.
+ * Screenwrite studio — Host half.
  *
  * Owns the local screenplay library, the browser JSON API used by the panel,
- * and the `screenplay` agent tool. The browser panel never touches the file
+ * and the `screenwrite` agent tool. The browser panel never touches the file
  * system directly.
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { access, cp, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,13 +19,16 @@ import {
   statsOf,
   subtitleOf,
   toFountain,
-} from './screenplay.js'
+} from './screenwrite.js'
 
-export const name = 'screenplay'
+export const name = 'screenwrite'
 export const inject = ['tools', 'webServer']
 
-const API_PREFIX = '/screenplay-api'
-const DATA_ROOT = join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'screenplay')
+const API_PREFIX = '/screenwrite-api'
+const DSH_HOME = process.env.DSH_HOME || join(homedir(), '.dsh')
+const DATA_ROOT = join(DSH_HOME, 'screenwrite')
+/** The library lived here before the 1.5 rename; it is moved on first run. */
+const LEGACY_DATA_ROOT = join(DSH_HOME, 'screenplay')
 const SCRIPT_DIR = join(DATA_ROOT, 'scripts')
 const SAMPLE_PATH = fileURLToPath(new URL('./samples/night-shift.fountain', import.meta.url))
 const SAMPLE_ID = 'sp-sample-night-shift'
@@ -67,7 +70,7 @@ function compareVersions(a, b) {
 /** The API route carries richer release data but is rate-limited unauthenticated. */
 async function latestFromApi() {
   const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-    headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-screenplay' },
+    headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-screenwrite' },
     signal: AbortSignal.timeout(UPDATE_TIMEOUT),
   })
   if (!response.ok) throw new Error(`API HTTP ${response.status}`)
@@ -89,7 +92,7 @@ async function latestFromApi() {
 async function latestFromPage() {
   const response = await fetch(`https://github.com/${REPO}/releases/latest`, {
     redirect: 'follow',
-    headers: { 'user-agent': 'dsh-screenplay' },
+    headers: { 'user-agent': 'dsh-screenwrite' },
     signal: AbortSignal.timeout(UPDATE_TIMEOUT),
   })
   if (!response.ok) throw new Error(`Release page HTTP ${response.status}`)
@@ -179,6 +182,36 @@ function scriptPath(id) {
 
 async function ensureDir() {
   await mkdir(SCRIPT_DIR, { recursive: true })
+}
+
+/**
+ * The library used to sit in `~/.dsh/screenplay`. Move it to `~/.dsh/screenwrite`
+ * once, and only while the new location does not exist yet, so a writer's scripts
+ * survive the rename. A cross-volume move falls back to a copy and leaves the old
+ * folder in place rather than losing anything.
+ */
+async function migrateLegacyLibrary() {
+  if (LEGACY_DATA_ROOT === DATA_ROOT) return
+  try {
+    await access(DATA_ROOT)
+    return
+  } catch {
+    // The new location is still missing; carry on.
+  }
+  try {
+    await access(LEGACY_DATA_ROOT)
+  } catch {
+    return
+  }
+  try {
+    await rename(LEGACY_DATA_ROOT, DATA_ROOT)
+  } catch {
+    try {
+      await cp(LEGACY_DATA_ROOT, DATA_ROOT, { recursive: true, force: false, errorOnExist: false })
+    } catch (error) {
+      console.error('[screenwrite] library migration failed', error)
+    }
+  }
 }
 
 function cleanTitle(value, fallback = '未命名剧本') {
@@ -271,7 +304,7 @@ async function seedSample() {
 }
 
 function ensureReady() {
-  if (!seedPromise) seedPromise = seedSample().catch(() => undefined)
+  if (!seedPromise) seedPromise = migrateLegacyLibrary().then(seedSample).catch(() => undefined)
   return seedPromise
 }
 
@@ -376,8 +409,8 @@ async function readJsonBody(request) {
 async function routeApi(request, response) {
   try {
     await ensureReady()
-    if (request.headers['x-screenplay'] !== '1') {
-      throw httpError(403, 'Missing screenplay API header')
+    if (request.headers['x-screenwrite'] !== '1') {
+      throw httpError(403, 'Missing screenwrite API header')
     }
     if (request.method === 'GET' && (request.url === API_PREFIX || request.url === `${API_PREFIX}/`)) {
       sendJson(response, 200, { ok: true })
@@ -474,13 +507,13 @@ async function routeApi(request, response) {
     const status = error && Number.isInteger(error.statusCode) ? error.statusCode : 500
     if (status === 500) {
       try {
-        console.error('[screenplay] API failure', error)
+        console.error('[screenwrite] API failure', error)
       } catch {
         // Logging must not mask the response.
       }
     }
     if (!response.headersSent) {
-      sendJson(response, status, { error: error instanceof Error ? error.message : 'Screenplay API failed' })
+      sendJson(response, status, { error: error instanceof Error ? error.message : 'Screenwrite API failed' })
     }
   }
 }
@@ -488,7 +521,7 @@ async function routeApi(request, response) {
 /* -------------------------------------------------------------- agent tool */
 
 const TOOL_DESCRIPTION = [
-  'Create, read and revise screenplays in the Screenplay studio shown in the DSH sidebar.',
+  'Create, read and revise screenplays in the Screenwrite studio shown in the DSH sidebar.',
   'Scripts are stored as typed screenplay blocks and exchanged as Fountain-like text.',
   'Use this tool whenever the user asks to write, continue, restructure or inspect a script, instead of pasting a whole script into chat.',
   'Actions: list, read, create, write (replace the whole body), append, rename, delete.',
@@ -682,7 +715,7 @@ async function runTool(args) {
 
 function buildToolDefinition() {
   return {
-    name: 'screenplay',
+    name: 'screenwrite',
     description: TOOL_DESCRIPTION,
     parameters: TOOL_PARAMETERS,
     output: {
@@ -694,7 +727,7 @@ function buildToolDefinition() {
     execute: (args) => runTool(args),
     presentCall: (args) => ({
       card: 'generic',
-      title: args && args.action ? `Screenplay · ${args.action}` : 'Screenplay',
+      title: args && args.action ? `Screenwrite · ${args.action}` : 'Screenwrite',
       kind: 'other',
       rawInput: args && args.id ? { id: args.id } : undefined,
     }),
@@ -702,11 +735,11 @@ function buildToolDefinition() {
 }
 
 const PROMPT_SECTION = {
-  name: 'screenplay:studio',
+  name: 'screenwrite:studio',
   order: 700,
   text: [
-    '## Screenplay studio',
-    'A local screenplay library is available in the DSH sidebar (剧本工坊). When the request involves a script — writing, continuing, restructuring, or reviewing — work in that library with the `screenplay` tool. Read the current script before rewriting it, and prefer targeted write/append edits over pasting the whole script into chat.',
+    '## Screenwrite studio',
+    'A local screenplay library is available in the DSH sidebar (剧本工坊). When the request involves a script — writing, continuing, restructuring, or reviewing — work in that library with the `screenwrite` tool. Read the current script before rewriting it, and prefer targeted write/append edits over pasting the whole script into chat.',
     'Use a five-element page: scene heading, action/description, character name, parenthetical, dialogue. Fountain-like title page: `Title:`/`Author:`. Scene headings may be `内景 咖啡馆 - 日` or `INT. COFFEE - DAY`; action in present tense; a character name on its own line with dialogue beneath; parentheticals in （）.',
     'Write the master scene, not a shot list: no scene numbers, no transitions, no camera/shot language. Only what can be seen or heard — never what a character thinks or realizes. Action over talk; keep it concise and specific.',
     'Craft: give each scene a want, an obstacle and a turn; enter late and leave early; make dialogue specific to the character. A feature draft is about 100 pages. Reply to the user in their language, and describe changes by scene rather than reciting the whole script.',

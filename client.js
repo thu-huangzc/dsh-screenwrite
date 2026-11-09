@@ -1,12 +1,12 @@
 window.__ModuleLoader__.load({
-  id: 'dsh-screenplay',
+  id: 'dsh-screenwrite',
   factory(require) {
     const React = require('react')
     const h = React.createElement
     const { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } = React
 
-    const NS = 'screenplay'
-    const API = '/screenplay-api'
+    const NS = 'screenwrite'
+    const API = '/screenwrite-api'
     // Survives a panel switch in this browser session, so returning to the
     // studio reopens the script the writer was on.
     let lastOpenId = null
@@ -75,8 +75,8 @@ window.__ModuleLoader__.load({
     }
 
     const REPO_URL = 'https://github.com/thu-huangzc/dsh-screenwrite'
-    const LANG_STORE = 'screenplay.lang'
-    const UPDATE_STORE = 'screenplay.update'
+    const LANG_STORE = 'screenwrite.lang'
+    const UPDATE_STORE = 'screenwrite.update'
     const UPDATE_INTERVAL = 12 * 60 * 60 * 1000
 
     function storedLang() {
@@ -93,7 +93,31 @@ window.__ModuleLoader__.load({
     // or ⌘+ / ⌘-, and the sheet (type and margins together) scales.
     const ZOOM_MIN = 0.5
     const ZOOM_MAX = 2
-    const ZOOM_STORE = 'screenplay.zoom'
+    const ZOOM_STORE = 'screenwrite.zoom'
+
+    /**
+     * These settings were stored under `screenplay.*` before the rename. Carry
+     * them over once, so the interface language, zoom, and cached update state
+     * survive it; leave the stored copy alone when the new key already has one.
+     */
+    function adoptLegacyStores() {
+      for (const key of [LANG_STORE, UPDATE_STORE, ZOOM_STORE]) {
+        try {
+          const legacy = key.replace('screenwrite.', 'screenplay.')
+          if (localStorage.getItem(key) !== null) {
+            localStorage.removeItem(legacy)
+            continue
+          }
+          const value = localStorage.getItem(legacy)
+          if (value === null) continue
+          localStorage.setItem(key, value)
+          localStorage.removeItem(legacy)
+        } catch {
+          // Storage can be unavailable; defaults still apply.
+        }
+      }
+    }
+    adoptLegacyStores()
 
     function storedZoom() {
       try {
@@ -119,7 +143,7 @@ window.__ModuleLoader__.load({
         create: '创建',
         cancel: '取消',
         emptyLibrary: '还没有剧本',
-        emptyLibraryHint: '新建一份，或让 Agent 用 screenplay 工具为你起稿。',
+        emptyLibraryHint: '新建一份，或让 Agent 用 screenwrite 工具为你起稿。',
         emptyScriptTitle: '未命名剧本',
         noAuthor: '未署名',
         scenes: '场',
@@ -181,7 +205,7 @@ window.__ModuleLoader__.load({
       },
       en: {
         nav: 'Scripts',
-        title: 'Screenplay studio',
+        title: 'Screenwrite studio',
         libraryTitle: 'Library',
         librarySub: 'Local autosave — imagine freely, and write.',
         newScript: 'New screenplay',
@@ -190,7 +214,7 @@ window.__ModuleLoader__.load({
         create: 'Create',
         cancel: 'Cancel',
         emptyLibrary: 'No screenplays yet',
-        emptyLibraryHint: 'Create one, or ask the agent to draft with the screenplay tool.',
+        emptyLibraryHint: 'Create one, or ask the agent to draft with the screenwrite tool.',
         emptyScriptTitle: 'Untitled screenplay',
         noAuthor: 'Uncredited',
         scenes: 'scenes',
@@ -756,7 +780,7 @@ ${blocks}
     async function request(path, options) {
       const init = {
         method: (options && options.method) || 'GET',
-        headers: { 'x-screenplay': '1' },
+        headers: { 'x-screenwrite': '1' },
         cache: 'no-store',
       }
       if (options && options.body !== undefined) {
@@ -2924,7 +2948,7 @@ ${blocks}
           ctx.slots.register(
             {
               name: 'sidebar.panellist',
-              id: 'screenplay',
+              id: 'screenwrite',
               order: 40,
               label: () => navLabel(ctx),
             },
@@ -2936,7 +2960,7 @@ ${blocks}
           ctx.slots.register(
             {
               name: 'main',
-              key: 'screenplay',
+              key: 'screenwrite',
             },
             (props) => h(Studio, { ...props, __ctx: ctx }),
           ),

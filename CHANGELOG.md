@@ -4,7 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.1] - 2026-11-09
+
+### Changed
+
+- Everything that used to be called `screenplay` is now `screenwrite`: the npm
+  package (`dsh-screenwrite`), the plugin id in `cordis.patch.yml` and
+  `client.js`, the agent tool, the `/screenwrite-api` endpoints, the
+  `x-screenwrite` request header, the `screenwrite:studio` prompt section, the
+  sidebar slot ids, and the settings stored in `localStorage`. The engine module
+  is `screenwrite.js`.
+- The library moves from `~/.dsh/screenplay/` to `~/.dsh/screenwrite/` on first
+  run — by rename, or by copy when the two folders sit on different volumes —
+  and an existing `~/.dsh/screenplay/` is left untouched when the new folder is
+  already there. `screenplay.*` settings are adopted once into `screenwrite.*`.
+- The English product name is **Screenwrite studio**; the Chinese UI keeps
+  剧本工坊.
 
 ## [1.4.2] - 2026-11-08
 

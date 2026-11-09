@@ -10,7 +10,7 @@ English | [中文](PUBLIC_SCREENPLAYS.md)
 
 ## The case already in the library: A Real Pain (full spec script)
 
-**A REAL PAIN** is imported into the Screenplay studio in full — open it to see a complete, professionally formatted script page.
+**A REAL PAIN** is imported into the Screenwrite studio in full — open it to see a complete, professionally formatted script page.
 
 | Item | Detail |
 |---|---|
