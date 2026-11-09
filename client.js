@@ -76,8 +76,6 @@ window.__ModuleLoader__.load({
 
     const REPO_URL = 'https://github.com/thu-huangzc/dsh-screenwrite'
     const LANG_STORE = 'screenwrite.lang'
-    const UPDATE_STORE = 'screenwrite.update'
-    const UPDATE_INTERVAL = 12 * 60 * 60 * 1000
 
     function storedLang() {
       try {
@@ -97,11 +95,11 @@ window.__ModuleLoader__.load({
 
     /**
      * These settings were stored under `screenplay.*` before the rename. Carry
-     * them over once, so the interface language, zoom, and cached update state
-     * survive it; leave the stored copy alone when the new key already has one.
+     * them over once, so the interface language and zoom survive it; leave the
+     * stored copy alone when the new key already has one.
      */
     function adoptLegacyStores() {
-      for (const key of [LANG_STORE, UPDATE_STORE, ZOOM_STORE]) {
+      for (const key of [LANG_STORE, ZOOM_STORE]) {
         try {
           const legacy = key.replace('screenwrite.', 'screenplay.')
           if (localStorage.getItem(key) !== null) {
@@ -184,13 +182,8 @@ window.__ModuleLoader__.load({
         settings: '设置',
         settingsLanguage: '语言',
         settingsLangAuto: '跟随应用',
-        settingsUpdate: '版本更新',
-        settingsCheck: '检查更新',
-        settingsChecking: '正在检查…',
-        settingsLatest: '已是最新（{version}）',
-        settingsNewest: '{from} → {to}',
-        settingsUnreachable: '暂时连不上 GitHub',
-        settingsOpenRelease: '打开下载页',
+        settingsVersion: '版本',
+        settingsUpdateHint: '更新由 Harness 插件页管理',
         settingsFeedback: '问题反馈',
         settingsFeedbackHint: '遇到 bug，或者想要新功能？',
         settingsOpenIssues: 'GitHub Issues',
@@ -255,13 +248,8 @@ window.__ModuleLoader__.load({
         settings: 'Settings',
         settingsLanguage: 'Language',
         settingsLangAuto: 'Follow app',
-        settingsUpdate: 'Updates',
-        settingsCheck: 'Check for updates',
-        settingsChecking: 'Checking…',
-        settingsLatest: 'Up to date ({version})',
-        settingsNewest: '{from} → {to}',
-        settingsUnreachable: 'GitHub unreachable',
-        settingsOpenRelease: 'Open the release page',
+        settingsVersion: 'Version',
+        settingsUpdateHint: 'Updates are managed on the Harness plugin page',
         settingsFeedback: 'Feedback',
         settingsFeedbackHint: 'Found a bug or want a feature?',
         settingsOpenIssues: 'GitHub Issues',
@@ -990,7 +978,7 @@ ${blocks}
       )
     }
 
-    function SettingsDialog({ t, langChoice, onLang, onClose, version, update, checking, onCheck }) {
+    function SettingsDialog({ t, langChoice, onLang, onClose, version }) {
       useEffect(() => {
         const onKey = (event) => {
           if (event.key === 'Escape') onClose()
@@ -998,19 +986,6 @@ ${blocks}
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
       }, [onClose])
-
-      let status = ''
-      if (checking) {
-        status = t('settingsChecking')
-      } else if (update && update.error) {
-        status = t('settingsUnreachable')
-      } else if (update && update.hasUpdate) {
-        status = t('settingsNewest')
-          .replace('{from}', update.current || version || '')
-          .replace('{to}', update.latest || '')
-      } else if (update) {
-        status = t('settingsLatest').replace('{version}', update.current || version || '')
-      }
 
       const languages = [
         ['auto', t('settingsLangAuto')],
@@ -1064,23 +1039,12 @@ ${blocks}
           h(
             'section',
             { className: 'sw-sheet-row' },
-            h('div', { className: 'sw-sheet-label' }, t('settingsUpdate')),
+            h('div', { className: 'sw-sheet-label' }, t('settingsVersion')),
             h(
               'div',
-              { className: 'sw-update' },
-              status ? h('span', { className: 'sw-update-state' }, status) : null,
-              update && update.hasUpdate && update.url
-                ? h(
-                    'a',
-                    { className: 'sw-link sw-link--inline', href: update.url, target: '_blank', rel: 'noreferrer noopener' },
-                    t('settingsOpenRelease'),
-                  )
-                : null,
-              h(
-                'button',
-                { type: 'button', className: 'sw-btn', onClick: onCheck, disabled: checking },
-                t('settingsCheck'),
-              ),
+              { className: 'sw-meta' },
+              h('span', { className: 'sw-meta-value' }, version ? `v${version}` : '—'),
+              h('span', { className: 'sw-meta-hint' }, t('settingsUpdateHint')),
             ),
           ),
           h(
@@ -1315,8 +1279,6 @@ ${blocks}
       const [zoom, setZoom] = useState(storedZoom)
       const [settingsOpen, setSettingsOpen] = useState(false)
       const [version, setVersion] = useState('')
-      const [update, setUpdate] = useState(null)
-      const [checking, setChecking] = useState(false)
       const [zoomBadge, setZoomBadge] = useState(false)
       const zoomRef = useRef(zoom)
       const zoomTimer = useRef(null)
@@ -1384,26 +1346,6 @@ ${blocks}
         }
       }, [])
 
-      const runUpdateCheck = useCallback(async (options = {}) => {
-        const force = Boolean(options.force)
-        setChecking(true)
-        try {
-          // The manual button must not read back the host's 60-second error
-          // cache — a network that just came back has to be able to recover.
-          const data = await request(`/update${force ? '?force=1' : ''}`)
-          setUpdate(data)
-          try {
-            localStorage.setItem(UPDATE_STORE, JSON.stringify(data))
-          } catch {
-            // Ignore storage failures.
-          }
-        } catch {
-          setUpdate({ error: 'unreachable', checkedAt: new Date().toISOString() })
-        } finally {
-          setChecking(false)
-        }
-      }, [])
-
       useEffect(() => {
         let alive = true
         request('/version')
@@ -1415,24 +1357,6 @@ ${blocks}
           alive = false
         }
       }, [])
-
-      useEffect(() => {
-        let cached = null
-        try {
-          cached = JSON.parse(localStorage.getItem(UPDATE_STORE) || 'null')
-        } catch {
-          cached = null
-        }
-        if (cached && cached.checkedAt) {
-          const age = Date.now() - Date.parse(cached.checkedAt)
-          setUpdate(cached)
-          // A failed lookup is worth retrying soon — the network may simply not
-          // have been up when the panel opened.
-          if (!cached.error && age < UPDATE_INTERVAL) return
-          if (cached.error && age < 2 * 60 * 1000) return
-        }
-        runUpdateCheck()
-      }, [runUpdateCheck])
 
       const showToast = useCallback((message) => {
         setToast(message)
@@ -2253,11 +2177,7 @@ ${blocks}
 
       // The library has no top bar: it opens straight into 剧本库. The bar only
       // exists in the editor, where it carries the back button, doc meta and export.
-      const openSettings = () => {
-        setSettingsOpen(true)
-        const stale = update && update.error && (!update.checkedAt || Date.now() - Date.parse(update.checkedAt) > 30 * 1000)
-        if (stale) runUpdateCheck({ force: true })
-      }
+      const openSettings = () => setSettingsOpen(true)
 
       const settingsButton = h(
         'button',
@@ -2269,7 +2189,6 @@ ${blocks}
           'aria-label': t('settings'),
         },
         h(Glyph, { name: 'gear' }),
-        update && update.hasUpdate ? h('span', { className: 'sw-gear-dot', 'aria-hidden': 'true' }) : null,
       )
 
       const settingsDialog = settingsOpen
@@ -2279,9 +2198,6 @@ ${blocks}
             onLang: chooseLang,
             onClose: () => setSettingsOpen(false),
             version,
-            update,
-            checking,
-            onCheck: () => runUpdateCheck({ force: true }),
           })
         : null
 
@@ -2895,8 +2811,9 @@ ${blocks}
 .sw-sheet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--dsw-alias-border-l1)}
 .sw-sheet-row--stack{display:block}
 .sw-sheet-label{font-size:12.5px;font-weight:600}
-.sw-update{display:flex;align-items:center;gap:10px;min-width:0}
-.sw-update-state{font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw-meta{display:flex;align-items:baseline;gap:8px;min-width:0}
+.sw-meta-value{font-size:12px;color:var(--dsw-alias-label-primary);white-space:nowrap}
+.sw-meta-hint{font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sw-muted{font-size:11.5px;color:var(--dsw-alias-label-secondary);line-height:1.55;margin:6px 0 0}
 .sw-seg{display:flex;gap:2px;padding:2px;border:1px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
 .sw-seg-item{border:0;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:11.5px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
@@ -2907,7 +2824,6 @@ ${blocks}
 .sw-link:hover{text-decoration:underline}
 .sw-link--inline{margin-top:0}
 .sw-gear{position:relative}
-.sw-gear-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-brand-primary);box-shadow:0 0 0 2px var(--dsw-alias-bg-base)}
 .sw-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:20;padding:9px 14px;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);font-size:12.5px;box-shadow:0 10px 30px -16px var(--dsw-alias-border-l2);max-width:min(560px,calc(100vw - 32px))}
 .sw-center{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--dsw-alias-label-secondary);font-size:13px;padding:40px}
 .sw-error-title{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary)}

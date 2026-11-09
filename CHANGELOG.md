@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-09
+
+### Changed
+
+- Updates moved out of the plugin and onto the Harness **Plugins** page. The
+  plugin is on npm, so a registry install (`dsh-screenwrite@1.6.0`) gets DSH's
+  own version list and *Update* button; the settings panel now shows the version
+  and says where updates are managed.
+- Removed the in-plugin GitHub release check: `GET /screenwrite-api/update`, the
+  twelve-hour background lookup, the dot on the settings cog, and the cached
+  `screenwrite.update` state. `/screenwrite-api/version` stays, for the settings
+  panel's version line.
+
 ## [1.5.1] - 2026-11-09
 
 ### Changed
